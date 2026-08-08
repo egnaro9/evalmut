@@ -116,9 +116,9 @@ def _defect_case_for(op):
                                            tool_calls=({"tool": "aa"}, {"tool": "bb"}, {"tool": "cc"})),
                                          judges=("tool_calls",), tags=("trajectory",),
                                          expected_trajectory=("aa", "bb"), trajectory_threshold=1.0),
-        "inject_denylisted_tool": EvalCase("id", contains("x"),
-                                           g(text="x", tool_calls=({"tool": "safe"},), expected="rm"),
-                                           tags=("tool_policy",)),
+        "inject_denylisted_tool": EvalCase("id", tool_misuse(["rm"]),
+                                           g(text="done", tool_calls=({"tool": "safe"},), expected="rm"),
+                                           judges=("tool_calls",), tags=("tool_policy",)),
     }
     return by_id.get(op.id)
 
@@ -380,14 +380,13 @@ def test_P2G_defect_crash_is_surfaced_not_hidden():
     assert all(d.polarity is Polarity.DEFECT for d in r.crashing_defects)
 
 
-def test_P2H_near_miss_leaves_bystander_numbers_intact():
+def test_P2H_near_miss_declines_on_multi_number_text():
+    # Multi-number text: the operator can't know which number the grader selects (which/scope live
+    # in the closure), so it declines rather than risk mis-targeting a bystander (pass-2 H / pass-4).
     from evalmut.operators import _near_miss_number
     c = EvalCase("x", number(5, tol=0.5, which="last"),
                  GradeInput(text="Batch 2015, lot 25 - final count 5", expected=5), num_tol=0.5)
-    m = _near_miss_number.apply(c)
-    assert m is not None
-    assert "2015" in m.text and "lot 25" in m.text   # bystander numbers untouched
-    assert m.text.rstrip().endswith("6.5")           # only the answer token perturbed
+    assert _near_miss_number.apply(c) is None
 
 
 def test_P2I_truncate_declines_on_refusal_grader():
@@ -508,6 +507,85 @@ def test_P3F8_json_type_flip_declines_on_non_json_grader():
                       tags=("presence_check",))])
     assert not any(h.operator_id == "json_value_type_flip"
                    for h in (r.coverage_gaps + r.blind_spots))
+
+
+# ── cold-critic PASS 4 regressions (siblings the earlier fixes missed) ────────
+
+def test_P4_garbage_strings_share_no_characters():
+    # The two-garbage corroboration is only sound if the garbages share NO case-folded character;
+    # otherwise a single-char needle (contains('x')) passes both (pass-4).
+    from evalmut.operators import _GARBAGE, _GARBAGE2
+    assert not (set(_GARBAGE.lower()) & set(_GARBAGE2.lower()))
+
+
+def test_P4_no_false_vacuous_on_single_char_content_grader():
+    # contains('x') on a correct answer 'X' genuinely discriminates (rejects 'V', 'seven'), so it
+    # must not read as vacuous even though 'x' is a character (pass-4 F5-sibling).
+    r = run([EvalCase("roman", contains("x"), GradeInput(text="X", expected="X"))])
+    assert not r.vacuous
+
+
+def test_P4_trailing_disclaimer_no_false_brittle_on_single_line_grader():
+    # A grader that tolerates an INLINE trailing disclaimer but not a new paragraph is not brittle
+    # to disclaimers; the same-line minimal probe isolates the line constraint (pass-4 F1-sibling).
+    from gradecore import Verdict
+
+    def single_line_ok(inp):
+        t = inp.text or ""
+        ok = t.split("\n")[0].strip().startswith("42") and "\n\n" not in t
+        return Verdict(passed=ok, score=1.0 if ok else 0.0,
+                       severity="none" if ok else "med", detail="single-line", grader_id="single_line")
+    r = run([EvalCase("sl", single_line_ok, GradeInput(text="42"),
+                      content_required=True, tolerates=("disclaimer",))])
+    assert not r.brittle_spots
+
+
+def test_P4_trailing_disclaimer_declines_on_valid_json():
+    # Appending prose to JSON always breaks the parse — that is JSON semantics, not brittleness, so
+    # trailing_disclaimer must decline on a valid_json grader (pass-4).
+    r = run([EvalCase("j", valid_json("a"), GradeInput(text='{"a": 1}'),
+                      tags=("json",), tolerates=("disclaimer",))])
+    assert not r.brittle_spots
+
+
+def test_P4_near_miss_no_false_blind_on_comma_adjacent_numbers():
+    # gradecore strips commas before tokenizing, so '5.0,5.0' merges; the operator declines on
+    # multi-number text instead of mis-targeting a bystander into a phantom in-band value (pass-4).
+    r = run([EvalCase("coords", number(5.0, tol=0.5, which="any"),
+                      GradeInput(text="coordinates 5.0,5.0", expected=5.0), num_tol=0.5)])
+    assert not r.blind_spots
+
+
+def test_P4_near_miss_no_false_blind_on_leading_minus():
+    # A stray '-' before the answer token must not recombine with the replacement to re-form the
+    # correct (negative) answer (pass-4 leading-minus channel).
+    from evalmut.operators import _near_miss_number
+    c = EvalCase("m", number(-0.5, tol=1e-9),
+                 GradeInput(text="delta was -0.5 units", expected=-0.5), num_tol=0.0)
+    m = _near_miss_number.apply(c)
+    # if it fires at all, the re-parsed mutant must be out of band (never equal to exp)
+    if m is not None:
+        from evalmut.operators import _gradecore_numbers
+        nums = _gradecore_numbers(m.text)
+        assert all(abs(v - (-0.5)) > 1e-9 for v in nums)
+
+
+def test_P4_truncate_declines_on_one_of():
+    # one_of is multi-acceptance: the truncated head can end in a DIFFERENT valid option the grader
+    # rightly accepts, so truncate must not fire on it (pass-4).
+    from gradecore import one_of
+    r = run([EvalCase("mc", one_of("true", "false", scope="last_line"),
+                      GradeInput(text="false\ntrue", expected="true"))])
+    assert not any(h.operator_id == "truncate_before_answer" for h in r.blind_spots)
+
+
+def test_P4_inject_declines_when_expected_not_in_denylist():
+    # If the declared `expected` tool isn't in the grader's real denylist, injecting it is not a
+    # violation — the independent single-tool probe catches this and declines (pass-4 nit).
+    r = run([EvalCase("ap", tool_misuse(["delete_db"]),
+                      GradeInput(text="done", tool_calls=({"tool": "search"},), expected="rm"),
+                      judges=("tool_calls",), tags=("tool_policy",))])
+    assert not r.blind_spots
 
 
 # ── determinism ──────────────────────────────────────────────────────────────

@@ -39,8 +39,10 @@ suite = [
              GradeInput(text='{"count": 3, "unit": "widgets"}'),
              intent="a JSON object with a count field", tags=("json",)),
 
-    # A deliberately vacuous grader, to show the sanity floor firing.
+    # A deliberately vacuous grader, to show the sanity floor firing. content_required tells evalmut
+    # this custom grader is SUPPOSED to assert answer content, so the SANITY probes may fire (they
+    # decline on an undeclared custom grader — an absence grader is not vacuous).
     EvalCase("rubber-stamp", bool_grader(lambda t: True, "always_pass"),
-             GradeInput(text="the answer is 42", expected="42"),
+             GradeInput(text="the answer is 42", expected="42"), content_required=True,
              intent="a check that was never wired to assert anything"),
 ]

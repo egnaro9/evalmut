@@ -48,25 +48,31 @@ _NUMBER = re.compile(r"-?\d+(?:\.\d+)?")
 # must_comply is excluded too — it only checks "didn't refuse", which a blank also satisfies.
 _CONTENT_REQUIRING = {"exact", "exact_cs", "one_of", "number", "contains", "regex",
                       "valid_json", "grounding"}
-# Graders that check for the presence of a specific answer STRING/NUMBER *equal to* the case's
-# `expected`, where cutting that answer out of the reply is unambiguously a defect. Deliberately
-# EXCLUDES contains/regex: their acceptance condition is a needle/pattern inside the closure, NOT
-# `expected` (a contains grader routinely checks a loose keyword while `expected` is the canonical
-# answer — they legitimately differ), so truncating before `expected` can leave the needle intact
-# and the grader is right to pass (cold-critic pass-3 F7). Also excludes grounding: it measures
-# faithfulness not completeness, so a truncated-but-faithful answer still grounds (pass-2 I).
-_ANSWER_PRESENCE_GRADERS = {"exact", "exact_cs", "one_of", "number"}
+# Graders with a SINGLE canonical answer equal to the case's `expected`, where cutting that answer
+# out of the reply is unambiguously a defect. Restricted to exact/exact_cs: truncate cuts at the
+# FIRST occurrence of `expected`, so the surviving head provably contains zero occurrences of it,
+# and a single-answer grader must reject a head that lacks the answer. Deliberately EXCLUDES:
+#  - contains/regex — the acceptance condition is a needle/pattern in the closure, not `expected`,
+#    so truncating before `expected` can leave the needle intact (pass-3 F7);
+#  - one_of — MULTI-acceptance: an earlier line can be a DIFFERENT valid option, so the truncated
+#    head is still a correct answer the grader rightly passes (pass-4);
+#  - number — its `expected` is numeric, not a text span truncate can locate;
+#  - grounding — measures faithfulness not completeness, so a truncated-but-faithful answer grounds.
+_ANSWER_PRESENCE_GRADERS = {"exact", "exact_cs"}
 
 # Two structurally-DISJOINT opaque garbage strings for the SANITY floor probes. A grader is only
 # vacuous if it accepts a DIVERSE battery of clearly-wrong outputs; a single garbage passing can be
 # a coincidence — the old fixed lorem-ipsum satisfied contains('answer') (pass-2 D), and even the
 # opaque _GARBAGE alone matches a `^[a-z]+( [a-z]+){4}$` "five lowercase words" regex or a contains
 # needle that is a substring of a token (pass-3 F5/F6). So the SANITY operators corroborate with a
-# second garbage that shares NONE of the first's structure (uppercase, digits, punctuation, one
-# short token) — no single pattern/needle matches both, so only a truly discriminating-nothing
-# grader passes both.
-_GARBAGE = "zxqfp wgbrtl mnkvd frljpz qptxw"   # five lowercase, vowel-free tokens
-_GARBAGE2 = "7Q!~ZxK9"                          # one token, mixed case + digits + punctuation
+# second garbage; for the corroboration to be sound the two must share NO characters (case-folded),
+# so no single-character needle or character-class pattern can match both (pass-4: the earlier
+# _GARBAGE2 reused z/x/k/q, so contains('x') passed both and read as a false vacuous). _GARBAGE2's
+# alphabet {8,h,@,a,c,3,%,o} is disjoint from every letter in _GARBAGE below. (A length-only / '.+' /
+# '\\S' grader still passes both — but such a grader genuinely asserts nothing about content, so
+# flagging it vacuous is correct.)
+_GARBAGE = "zxqfp wgbrtl mnkvd frljpz qptxw"   # letters: z x q f p w g b r t l m n k v d j
+_GARBAGE2 = "8H@ac3%o"                          # disjoint alphabet, mixed case + digits + punctuation
 
 
 def _grader_id(case: EvalCase) -> str:
@@ -114,6 +120,15 @@ def _equivalent_or_decline(case: EvalCase, minimal: str, full: str) -> Optional[
 def _overlap(answer: str, ctx: str) -> int:
     a = set(re.findall(r"[a-z0-9]+", answer.lower()))
     return len(a & set(re.findall(r"[a-z0-9]+", ctx.lower())))
+
+
+def _gradecore_numbers(text: str) -> list:
+    """The numeric tokens a gradecore number grader would read: commas stripped (it does
+    `src.replace(',','')`), then the same `-?\\d+(?:\\.\\d+)?` regex. near_miss re-reads its mutant
+    through this so its 'out-of-band' claim is checked against the number the GRADER will actually
+    parse — not a naive substring — closing the comma-concatenation and sign-merge channels that
+    defeated the old cross-check (pass-4)."""
+    return [float(n) for n in _NUMBER.findall((text or "").replace(",", ""))]
 
 
 def _fmt_num(val: float, like: str) -> str:
@@ -208,32 +223,48 @@ def _near_miss_number(case: EvalCase) -> Optional[GradeInput]:
     if any(bad in exp_repr for bad in ("e", "inf", "nan")):
         return None  # exponent/degenerate forms don't yield a clean answer token (pass-2 K)
     text = case.good.text or ""
+    # A number grader selects among the text's numbers by which/scope, which live in the closure
+    # and are invisible here. To make the perturbation provably out-of-band REGARDLESS of that
+    # selection, fire only when the text (through the grader's OWN tokenizer) presents EXACTLY ONE
+    # number and it is the answer — then any selection picks it. Multi-number or comma/sign-merged
+    # texts decline instead of mis-targeting a bystander (pass-4 comma/minus channels).
+    orig = _gradecore_numbers(text)
+    if len(orig) != 1 or abs(orig[0] - float(exp)) > 1e-9:
+        return None
     m = _NUMBER.search(str(exp))
     if not m:
         return None
     target = m.group(0)
-    # Replace only WHOLE-number occurrences of the answer, on numeric boundaries — so a bare
-    # '5' does not rewrite '2015' or '25' and split digits into malformed tokens (pass-2 H).
-    boundary = re.compile(r"(?<![\d.])" + re.escape(target) + r"(?![\d.])")
+    # Boundary excludes a preceding sign too (?<![\d.\-]) so a stray '-' cannot recombine with the
+    # replacement and re-form the correct answer (pass-4 leading-minus channel).
+    boundary = re.compile(r"(?<![\d.\-])" + re.escape(target) + r"(?![\d.])")
     if not boundary.search(text):
         return None
 
-    # Cross-check: probe the grader with a value clearly PAST the declared band edge. A grader
-    # whose real tolerance is wider than declared will accept it — meaning our out-of-band
-    # value might actually be inside the grader's real band, so declining is the honest move.
+    def _mutate(val: float) -> str:
+        return boundary.sub(_fmt_num(val, target), text)
+
+    # Cross-check the DECLARED band against the grader (pass-2 F): a value just past the declared
+    # edge that the grader still accepts means its real tolerance is wider than declared -> decline.
     edge_val = float(exp) + (tol * 1.5 if tol > 0 else 0.5)
-    edge_text = boundary.sub(_fmt_num(edge_val, target), text)
+    edge_text = _mutate(edge_val)
+    if _gradecore_numbers(edge_text) != [edge_val]:
+        return None  # substitution didn't yield a clean single edge value (parse artifact) -> decline
     try:
         if case.grader(with_text(case.good, edge_text)).passed:
             return None  # declaration understates the grader's real band -> decline (pass-2 F)
     except Exception:
         return None      # cannot verify the declaration -> decline rather than guess
 
-    # A value comfortably outside [exp - tol, exp + tol]: no correct grader with this tolerance
-    # accepts something this far off. Replace every whole-number occurrence of the answer so a
-    # which='any' grader can't find an intact copy.
     wrong_val = float(exp) + tol + max(abs(tol), 1.0)
-    return with_text(case.good, boundary.sub(_fmt_num(wrong_val, target), text))
+    wrong_text = _mutate(wrong_val)
+    # Re-read the mutant through the grader's own tokenizer: the number it will parse must be a
+    # single value provably OUTSIDE [exp-tol, exp+tol]. If the substitution produced a different
+    # count or an in-band value (a parse artifact), decline rather than assert a false defect.
+    mut = _gradecore_numbers(wrong_text)
+    if len(mut) != 1 or abs(mut[0] - float(exp)) <= tol:
+        return None
+    return with_text(case.good, wrong_text)
 
 
 @operator(
@@ -452,6 +483,16 @@ def _inject_denylisted_tool(case: EvalCase) -> Optional[GradeInput]:
     tool = case.good.expected  # the denylisted tool name for this policy case
     if not isinstance(tool, str) or not tool.strip():
         return None
+    # Verify the tool is ACTUALLY forbidden before asserting a defect: probe the grader with a
+    # minimal trajectory of ONLY this tool (an independent representative, not the mutant -> not
+    # circular). If the grader accepts it, `expected` doesn't match the grader's real denylist, so
+    # injecting it is not a violation -> decline rather than report a false blind spot (pass-4 nit).
+    probe = replace(case.good, tool_calls=({"tool": tool},))
+    try:
+        if case.grader(probe).passed:
+            return None
+    except Exception:
+        return None
     calls = list(case.good.tool_calls or ())
     return replace(case.good, tool_calls=tuple(calls) + ({"tool": tool},))
 
@@ -468,6 +509,15 @@ def _inject_denylisted_tool(case: EvalCase) -> Optional[GradeInput]:
 # FLAGGED be an honest fact about the grader rather than a guess about its contract.
 # ─────────────────────────────────────────────────────────────────────────────
 
+# Graders whose contract is broken by ANY trailing prose BY DESIGN — an exact/identity match, a
+# JSON parse, a bare-number/regex/option match. Appending a disclaimer to these is not a cosmetic
+# still-correct change, so a rejection is not brittleness; trailing_disclaimer declines on them
+# (pass-4: valid_json + tolerates=('disclaimer',) was a false brittle). It fires on content-scanning
+# graders (contains, must_comply) and custom graders, where a trailing disclaimer after a complete
+# answer preserves the graded property — its whole mined origin (must_comply's opening scan).
+_TRAILING_PROSE_BREAKS = {"exact", "exact_cs", "valid_json", "number", "one_of", "regex"}
+
+
 @operator(
     "trailing_disclaimer", family="equivalent", polarity=Polarity.EQUIVALENT, field="text",
     defect_shape="a disclaimer appended AFTER a complete, correct answer",
@@ -478,11 +528,15 @@ def _inject_denylisted_tool(case: EvalCase) -> Optional[GradeInput]:
 def _trailing_disclaimer(case: EvalCase) -> Optional[GradeInput]:
     if "disclaimer" not in case.tolerates:
         return None
+    if _grader_id(case) in _TRAILING_PROSE_BREAKS:
+        return None
     text = case.good.text or ""
     if not text.strip():
         return None
     base = text.rstrip()
-    minimal = base + "\n\n(note)"   # smallest trailing-text addition — isolates a length constraint
+    # The minimal probe is SAME-LINE, so a grader that tolerates an inline disclaimer but not a new
+    # paragraph passes it — isolating a line/format constraint from disclaimer-intolerance (pass-4).
+    minimal = base + " (note)"
     full = base + "\n\n(Note: I'm an AI assistant and this isn't professional advice.)"
     return _equivalent_or_decline(case, minimal, full)
 

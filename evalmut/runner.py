@@ -40,7 +40,10 @@ class MutationResult:
 
 
 def _preview(s: object, n: int = 100) -> str:
-    t = " ".join(str(s).split())
+    # Show newlines as a visible ⏎ rather than collapsing them: a mutation's newline can be the
+    # load-bearing difference (e.g. a same-line vs new-paragraph disclaimer), and silently flattening
+    # it misrepresents WHY a grader rejected the mutant (pass-4 aggravator).
+    t = " ".join(str(s).replace("\n", " ⏎ ").split())
     return t if len(t) <= n else t[: n - 1] + "…"
 
 
