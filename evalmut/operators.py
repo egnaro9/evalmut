@@ -291,7 +291,7 @@ def _near_miss_number(case: EvalCase) -> Optional[GradeInput]:
 @operator(
     "garbage_answer", family="answer", polarity=Polarity.DEFECT, field="text",
     defect_shape="output replaced with unrelated text — a check that asserts nothing lets it pass",
-    real_origin="BoardEngineExampleTest.java:330 assertTrue(\"result is a boolean\", result || "
+    real_origin="a real game test suite: assertTrue(\"result is a boolean\", result || "
                 "!result) — a tautology any output satisfies",
     op_type=OperatorType.SANITY,
 )
@@ -319,8 +319,8 @@ def _garbage_answer(case: EvalCase) -> Optional[GradeInput]:
 @operator(
     "keyword_present_but_negated", family="presence-proxy", polarity=Polarity.DEFECT, field="text",
     defect_shape="the checked keyword appears, but in a context that means the opposite",
-    real_origin="val-gate.sh:14 — a proof gate that greps the transcript for 'val_lite'; the "
-                "block message contains 'val_lite', so mentioning it passes without running it",
+    real_origin="a CI proof-gate: greps its own run transcript for the token it should execute; the "
+                "block message contains that token, so mentioning it passes the gate without running it",
 )
 @applies_to_tag("presence_check")
 def _keyword_present_but_negated(case: EvalCase) -> Optional[GradeInput]:
@@ -635,8 +635,8 @@ def _trailing_disclaimer(case: EvalCase) -> Optional[GradeInput]:
     "whitespace_noise", family="equivalent", polarity=Polarity.EQUIVALENT, field="text",
     defect_shape="cosmetic leading/trailing whitespace added around a correct answer",
     real_origin="gradecore graders.py exact()/contains() strip+lowercase, so leading/trailing "
-                "whitespace is cosmetic by that contract; feedback_assert_the_resting_state.md — "
-                "a check keyed to incidental formatting flips on a still-correct answer",
+                "whitespace is cosmetic by that contract; a check keyed to incidental formatting "
+                "flips on a still-correct answer",
 )
 def _whitespace_noise(case: EvalCase) -> Optional[GradeInput]:
     if "whitespace" not in case.tolerates:

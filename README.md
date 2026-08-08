@@ -33,8 +33,8 @@ $ evalmut run demos/dogfood_gradecore.py
     • contains / contains
         mutation : keyword_present_but_negated — the checked keyword appears,
                    but in a context that means the opposite
-        mined from: val-gate.sh:14 — a proof gate that greps for a token; the
-                   block message contains it, so mentioning it passes
+        mined from: a CI proof-gate that greps its own transcript for a
+                   token; the block message contains it, so mentioning it passes
   COVERAGE GAPS — no check guards this shape (a missing grader, not a broken one)
     • valid_json / valid_json
         mutation : json_value_type_flip — a required field's value coerced to
