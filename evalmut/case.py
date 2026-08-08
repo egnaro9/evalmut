@@ -88,7 +88,7 @@ class EvalCase:
 def case(name: str, grader: Grader, good: GradeInput, *, judges: tuple[str, ...] = ("text",),
          num_tol: float | None = None, content_required: bool = False,
          tolerates: tuple[str, ...] = (), expected_trajectory: tuple[str, ...] = (),
-         trajectory_threshold: float = 1.0, intent: str = "",
+         trajectory_threshold: float | None = None, intent: str = "",
          tags: tuple[str, ...] = ()) -> EvalCase:
     """Terse constructor for suites written as data."""
     return EvalCase(name=name, grader=grader, good=good, judges=judges,

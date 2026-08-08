@@ -588,6 +588,45 @@ def test_P4_inject_declines_when_expected_not_in_denylist():
     assert not r.blind_spots
 
 
+# ── cold-critic PASS 5 regressions (loose ends of the pass-3/4 fixes) ─────────
+
+def test_P5_case_constructor_declines_trajectory_without_threshold():
+    # The terse case() constructor must share the dataclass decline-by-default: building a lenient
+    # trajectory case WITHOUT trajectory_threshold must not manufacture a blind spot (pass-5 #3).
+    from evalmut import case as mkcase
+    c = mkcase("t", trajectory("a", "b", "c", threshold=0.6),
+               GradeInput(text="done",
+                          tool_calls=({"tool": "a"}, {"tool": "b"}, {"tool": "c"})),
+               judges=("tool_calls",), tags=("trajectory",), expected_trajectory=("a", "b", "c"))
+    assert c.trajectory_threshold is None
+    assert not run([c]).blind_spots
+
+
+def test_P5_trailing_disclaimer_no_false_brittle_on_punctuation_grader():
+    # A format grader that forbids parentheses (its output feeds a parser) but tolerates a
+    # punctuation-free trailing disclaimer is NOT brittle to disclaimers; the punctuation-free
+    # minimal probe isolates the '(' constraint and declines (pass-5 #2).
+    from gradecore import Verdict
+
+    def noparen(inp):
+        t = inp.text or ""
+        ok = "yes" in t and "(" not in t
+        return Verdict(passed=ok, score=1.0 if ok else 0.0,
+                       severity="none" if ok else "med", detail="noparen", grader_id="custom_noparen")
+    r = run([EvalCase("np", noparen, GradeInput(text="yes, that is correct"),
+                      content_required=True, tolerates=("disclaimer",))])
+    assert not r.brittle_spots
+
+
+def test_P5_near_miss_gated_to_number_grader():
+    # num_tol declared on a non-numeric grader (a format regex) is a contradiction; near_miss must
+    # decline rather than report a MISSED against a grader that never checks the value (pass-5 #1).
+    from gradecore import regex
+    from evalmut.operators import _near_miss_number
+    c = EvalCase("r", regex(r"^\d\d$"), GradeInput(text="42", expected=42), num_tol=1)
+    assert _near_miss_number.apply(c) is None
+
+
 # ── determinism ──────────────────────────────────────────────────────────────
 
 def test_run_is_deterministic():

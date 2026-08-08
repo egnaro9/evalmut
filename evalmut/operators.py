@@ -213,6 +213,12 @@ def _near_miss_number(case: EvalCase) -> Optional[GradeInput]:
     # declaration is not enough — an under-declared num_tol (smaller than the grader's real
     # tolerance) would make a perfectly-accepted value look like a missed defect (pass-2 F).
     # So we also CROSS-CHECK the declaration against the grader before trusting it.
+    # Fire only on a grader that actually GRADES A NUMBER (gradecore's number family). A num_tol
+    # declared on a non-numeric grader (a format regex, an exact match) is a contradiction — the
+    # grader never checks the value, so perturbing it proves nothing. Gate on the family, mirroring
+    # truncate/the SANITY probes, so a misdeclared num_tol can't manufacture a MISSED (pass-5 #1).
+    if _grader_id(case) != "number":
+        return None
     exp = case.good.expected
     if not isinstance(exp, (int, float)) or isinstance(exp, bool):
         return None
@@ -534,9 +540,11 @@ def _trailing_disclaimer(case: EvalCase) -> Optional[GradeInput]:
     if not text.strip():
         return None
     base = text.rstrip()
-    # The minimal probe is SAME-LINE, so a grader that tolerates an inline disclaimer but not a new
-    # paragraph passes it — isolating a line/format constraint from disclaimer-intolerance (pass-4).
-    minimal = base + " (note)"
+    # The minimal probe is SAME-LINE and PUNCTUATION-FREE, so a grader that tolerates an inline
+    # disclaimer but not a new paragraph OR an incidental character the full form carries (e.g. a
+    # format grader that forbids parentheses) passes it — letting _equivalent_or_decline isolate
+    # that constraint from disclaimer-intolerance and decline instead of false-flagging (pass-5).
+    minimal = base + " note"
     full = base + "\n\n(Note: I'm an AI assistant and this isn't professional advice.)"
     return _equivalent_or_decline(case, minimal, full)
 
