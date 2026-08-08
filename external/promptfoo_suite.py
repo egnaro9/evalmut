@@ -38,7 +38,8 @@ suite = [
     #    required numeric field returned as a string still parses and still has the key.
     EvalCase("api_isjson", pf_is_json("status", "count"),
              GradeInput(text='{"status": "ok", "count": 3}'),
-             tags=("json",), intent="validate the API response shape (is-json, no schema)"),
+             tags=("json",), grader_family="valid_json",  # external grader declares its contract family
+             intent="validate the API response shape (is-json, no schema)"),
 
     # 5. `word-count` used as the correctness gate — asserts nothing about the answer: any output
     #    within the length bound passes, including a blank or gibberish one.

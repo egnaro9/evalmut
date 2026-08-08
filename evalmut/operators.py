@@ -18,12 +18,12 @@ carries the canonical answer for operators that need to know where the answer is
 THE ONE DISCIPLINE (learned the hard way — cold-critic pass 2 caught this tool lying
 in five new ways): an operator may assert a mutant's polarity ONLY by recomputing the
 graded property against the grader's ACTUAL acceptance condition. That condition lives
-either in gradecore's `grader_id` vocabulary (a real contract we can read) or in a bar
-the suite author DECLARES on the case (num_tol, grounding_threshold, tolerates,
-expected_trajectory, content_required). It is never a module default, and never a label
-the grader emits about itself — a composite grader can honestly carry a primitive's id
-yet enforce more, so trusting the label manufactured false "brittle" findings. Where the
-condition is unknown, the operator DECLINES. A false hole is the one unforgivable bug in
+either in gradecore's `grader_id` vocabulary (a real contract we can read; an external
+grader states its family via `case.grader_family`) or in a bar the suite author DECLARES on
+the case (num_tol, tolerates, expected_trajectory, trajectory_threshold, content_required).
+It is never a module default, and never a label the grader emits about itself — a composite
+grader can honestly carry a primitive's id yet enforce more, so trusting the label
+manufactured false "brittle" findings. Where the condition is unknown, the operator DECLINES. A false hole is the one unforgivable bug in
 a tool whose entire pitch is "does your eval actually check anything?".
 """
 from __future__ import annotations
@@ -85,6 +85,15 @@ def _grader_id(case: EvalCase) -> str:
         return ""
 
 
+def _family(case: EvalCase) -> str:
+    """The grader's CONTRACT FAMILY for operator gating. Prefers the case's declared
+    `grader_family` (how an EXTERNAL grader states which gradecore family it behaves like, so the
+    tool runs against a framework's graders unmodified); falls back to the grader's own reported
+    grader_id for in-house gradecore graders. This is the ONLY thing operators gate family behavior
+    on; the grader's actual reported id still appears on the finding card, so reporting stays honest."""
+    return case.grader_family or _grader_id(case)
+
+
 def _grader_cleanly_passes(case: EvalCase, text: str) -> bool:
     """Does the grader PASS this text without raising? Used to compare the grader's response to
     two independent representatives (a diverse garbage battery, a minimal-vs-full cosmetic change)
@@ -104,9 +113,9 @@ def _requires_content(case: EvalCase) -> bool:
     output legitimately leaks no forbidden marker, so even a (grader-contradicting) content_required
     declaration cannot make it a defect; the content_required OR-branch must not override that
     (pass-7 — mirrors the unconditional absence gate the EQUIVALENT operators carry)."""
-    if _grader_id(case) in _ABSENCE_GRADERS:
+    if _family(case) in _ABSENCE_GRADERS:
         return False
-    return _grader_id(case) in _CONTENT_REQUIRING or case.content_required
+    return _family(case) in _CONTENT_REQUIRING or case.content_required
 
 
 def _equivalent_or_decline(case: EvalCase, minimal: str, full: str) -> Optional[GradeInput]:
@@ -166,7 +175,7 @@ def _truncate_before_answer(case: EvalCase) -> Optional[GradeInput]:
     # property is not the answer span, and truncating before a harm keyword leaves the
     # refusal intact — a correct safety grader rightly passes it, so calling that a blind
     # spot is false (pass-2 I). Gate on the answer-presence grader family.
-    if _grader_id(case) not in _ANSWER_PRESENCE_GRADERS:
+    if _family(case) not in _ANSWER_PRESENCE_GRADERS:
         return None
     exp = case.good.expected
     if not isinstance(exp, str) or not exp.strip():
@@ -223,7 +232,7 @@ def _near_miss_number(case: EvalCase) -> Optional[GradeInput]:
     # declared on a non-numeric grader (a format regex, an exact match) is a contradiction — the
     # grader never checks the value, so perturbing it proves nothing. Gate on the family, mirroring
     # truncate/the SANITY probes, so a misdeclared num_tol can't manufacture a MISSED (pass-5 #1).
-    if _grader_id(case) != "number":
+    if _family(case) != "number":
         return None
     exp = case.good.expected
     if not isinstance(exp, (int, float)) or isinstance(exp, bool):
@@ -396,7 +405,7 @@ def _json_value_type_flip(case: EvalCase) -> Optional[GradeInput]:
     # that happens to see JSON (e.g. contains('temperature') over a JSON reply), the flipped object
     # still contains the checked word, so the mutant is still-correct — reporting it (even as a
     # coverage gap) with valid_json provenance the suite never used is a false positive (pass-3 F8).
-    if _grader_id(case) != "valid_json":
+    if _family(case) != "valid_json":
         return None
     text = (case.good.text or "").strip()
     fenced = re.sub(r"^```(?:json)?\s*|\s*```$", "", text, flags=re.S).strip()
@@ -425,7 +434,7 @@ def _drop_supporting_context(case: EvalCase) -> Optional[GradeInput]:
     from gradecore import grounding_score
     # Only a grounding grader judges whether the answer is SUPPORTED by its contexts; for any
     # other grader, dropping a context changes nothing it grades, so there is no defect to prove.
-    if _grader_id(case) != "grounding":
+    if _family(case) != "grounding":
         return None
     ctxs = list(case.good.contexts or ())
     if len(ctxs) <= 1:
@@ -562,7 +571,7 @@ _TRAILING_PROSE_BREAKS = _IDENTITY_GRADERS | {"valid_json"}
 def _trailing_disclaimer(case: EvalCase) -> Optional[GradeInput]:
     if "disclaimer" not in case.tolerates:
         return None
-    if _grader_id(case) in _TRAILING_PROSE_BREAKS or _grader_id(case) in _ABSENCE_GRADERS:
+    if _family(case) in _TRAILING_PROSE_BREAKS or _family(case) in _ABSENCE_GRADERS:
         return None
     text = case.good.text or ""
     if not text.strip():
@@ -591,7 +600,7 @@ def _whitespace_noise(case: EvalCase) -> Optional[GradeInput]:
     # whitespace can itself BE a forbidden marker (injection_resistance(' ')), flipping the grader to
     # FAIL — which is not brittleness. (No _IDENTITY_GRADERS gate here: exact/contains/one_of/number/
     # valid_json all strip surrounding whitespace, so they correctly HOLD and must keep firing.)
-    if _grader_id(case) in _ABSENCE_GRADERS:
+    if _family(case) in _ABSENCE_GRADERS:
         return None
     text = case.good.text or ""
     if not text.strip():
@@ -613,7 +622,7 @@ def _json_code_fence(case: EvalCase) -> Optional[GradeInput]:
     # A code fence provably breaks an identity/format match and can carry an absence grader's marker;
     # decline on both, mirroring trailing_disclaimer (pass-6 symmetry). It fires on a fence-STRIPPING
     # grader (valid_json) or a content-scanning one, where a fence is genuinely correctness-preserving.
-    if _grader_id(case) in _IDENTITY_GRADERS or _grader_id(case) in _ABSENCE_GRADERS:
+    if _family(case) in _IDENTITY_GRADERS or _family(case) in _ABSENCE_GRADERS:
         return None
     text = (case.good.text or "").strip()
     if text.startswith("```"):

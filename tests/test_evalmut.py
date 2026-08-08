@@ -708,6 +708,37 @@ def test_P7_trajectory_still_caught_when_threshold_matches():
                for x in r.results)
 
 
+# ── grader-family declaration hook (run against external graders unmodified) ──
+
+def test_family_hook_fires_family_gated_operator_on_external_grader():
+    # A JSON-structure grader with a NOVEL id must declare grader_family='valid_json' to be seen as
+    # a JSON grader; then json_value_type_flip (valid_json-gated) fires. Without it, it declines.
+    def ext_json(inp):
+        import json as _j
+        try:
+            _j.loads((inp.text or "").strip()); ok = True
+        except Exception:
+            ok = False
+        return Verdict(passed=ok, score=1.0 if ok else 0.0,
+                       severity="none" if ok else "med", detail="ext", grader_id="my_json_checker")
+    gi = GradeInput(text='{"count": 3}')
+    undeclared = run([EvalCase("u", ext_json, gi, tags=("json",))])
+    assert not any(h.operator_id == "json_value_type_flip"
+                   for h in (undeclared.coverage_gaps + undeclared.blind_spots))
+    declared = run([EvalCase("d", ext_json, gi, tags=("json",), grader_family="valid_json")])
+    assert any(h.operator_id == "json_value_type_flip" for h in declared.coverage_gaps)
+
+
+def test_family_hook_reported_id_stays_honest():
+    # The declared family is for gating only; the finding card still reports the grader's ACTUAL id.
+    def ext_json(inp):
+        return Verdict(passed=True, score=1.0, severity="none", detail="ext", grader_id="my_json_checker")
+    r = run([EvalCase("d", ext_json, GradeInput(text='{"count": 3}'),
+                      tags=("json",), grader_family="valid_json")])
+    flip = [x for x in r.results if x.operator_id == "json_value_type_flip"][0]
+    assert flip.grader_id == "my_json_checker"  # honest reported id, not the declared family
+
+
 # ── determinism ──────────────────────────────────────────────────────────────
 
 def test_run_is_deterministic():

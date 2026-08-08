@@ -176,11 +176,11 @@ outcomes with a model; our whole point is to avoid that at the measurement layer
 - **Shallow failure modes.** Simple provable mutants probe syntactic/structural blind spots; a grader
   blind to a semantically subtle wrong answer that no simple fixed edit produces will not be caught.
   This is the price of the trade in §2, stated plainly.
-- **Grader-family coupling.** Some operators key behavior off a known grader-contract vocabulary, so
-  pointing the tool at an arbitrary external grader currently means labeling its port with a
-  contract-equivalent family id (done for promptfoo, annotated per grader) or adding a
-  family-declaration hook to the case — the natural next step for running it against a framework's
-  graders unmodified.
+- **Grader-family coupling.** Some operators key behavior off a known grader-contract vocabulary. An
+  external grader that does not carry a gradecore id declares its contract family on the case
+  (`grader_family="valid_json"`) and keeps reporting its own honest id; the declaration is for
+  gating only. This lets the tool run against a framework's graders unmodified (used for promptfoo),
+  though it still assumes the external grader's contract maps onto a known family.
 - **Mined-corpus dependence.** The catalog's value rests on the operators being mined from real
   defects; expanding it responsibly means mining, not authoring.
 

@@ -85,22 +85,22 @@ def pf_regex(pattern: str):
 # ── structured ───────────────────────────────────────────────────────────────
 
 def pf_is_json(*required_keys: str):
-    """promptfoo `is-json` WITHOUT a JSON schema: the whole output parses as JSON (optionally
-    checking that required keys are present). This schema-less contract — parse + key PRESENCE,
-    never value TYPE — is IDENTICAL to gradecore's `valid_json`, so it carries grader_id
-    'valid_json' (a contract classification, not a rename): that is what tells evalmut it is a
-    JSON-structure grader. (WITH a schema promptfoo would catch value types; that is a different,
-    stronger assertion and not what a bare `is-json` does.)"""
+    """promptfoo `is-json` WITHOUT a JSON schema (or with a `required`-only schema): the whole
+    output parses as JSON and the required keys are present. This schema-less contract — parse +
+    key PRESENCE, never value TYPE — is IDENTICAL to gradecore's `valid_json`. The grader reports
+    its OWN honest id ('pf_is_json'); the suite case declares `grader_family='valid_json'` so
+    evalmut treats it as a JSON-structure grader without the grader lying about what it is. (WITH a
+    typed-`properties` schema promptfoo would catch value types; that is a stronger assertion.)"""
     def g(inp: GradeInput) -> Verdict:
         raw = (inp.text or "").strip()
         try:
             obj = json.loads(raw)
         except Exception:
-            return _v(False, "valid_json", "not valid JSON")
+            return _v(False, "pf_is_json", "not valid JSON")
         if not isinstance(obj, dict):
-            return _v(not required_keys, "valid_json", f"JSON not an object: {type(obj).__name__}")
+            return _v(not required_keys, "pf_is_json", f"JSON not an object: {type(obj).__name__}")
         missing = [k for k in required_keys if k not in obj]
-        return _v(not missing, "valid_json", f"missing keys {missing}" if missing else "valid JSON")
+        return _v(not missing, "pf_is_json", f"missing keys {missing}" if missing else "valid JSON")
     return g
 
 

@@ -75,6 +75,13 @@ class EvalCase:
     # let trajectory_drop_step fire.
     trajectory_threshold: float | None = None
 
+    # The gradecore CONTRACT FAMILY this grader behaves like, when the grader is external and does
+    # not carry a gradecore grader_id (e.g. a promptfoo `is-json` port). Operators gate some
+    # behavior on the grader's contract family; for an in-house gradecore grader that family is read
+    # from its own grader_id, but an external grader must DECLARE it here (e.g. "valid_json",
+    # "number", "grounding", "contains", "injection_resistance"). Declared, it lets evalmut run
+    # against a framework's graders unmodified while the grader keeps reporting its own honest id.
+    grader_family: str | None = None
     # Optional human-readable notes surfaced in reports; never load-bearing.
     intent: str = ""
     tags: tuple[str, ...] = field(default_factory=tuple)
@@ -88,10 +95,11 @@ class EvalCase:
 def case(name: str, grader: Grader, good: GradeInput, *, judges: tuple[str, ...] = ("text",),
          num_tol: float | None = None, content_required: bool = False,
          tolerates: tuple[str, ...] = (), expected_trajectory: tuple[str, ...] = (),
-         trajectory_threshold: float | None = None, intent: str = "",
-         tags: tuple[str, ...] = ()) -> EvalCase:
+         trajectory_threshold: float | None = None, grader_family: str | None = None,
+         intent: str = "", tags: tuple[str, ...] = ()) -> EvalCase:
     """Terse constructor for suites written as data."""
     return EvalCase(name=name, grader=grader, good=good, judges=judges,
                     num_tol=num_tol, content_required=content_required, tolerates=tolerates,
                     expected_trajectory=expected_trajectory,
-                    trajectory_threshold=trajectory_threshold, intent=intent, tags=tags)
+                    trajectory_threshold=trajectory_threshold, grader_family=grader_family,
+                    intent=intent, tags=tags)

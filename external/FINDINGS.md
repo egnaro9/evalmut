@@ -97,8 +97,8 @@ model judging anything.
 - **What is not affected.** A suite that pairs `contains` with a stronger check, uses a fully-typed
   JSON schema, or uses `word-count` only alongside a content check, does not have these holes — and
   evalmut would report them clean.
-- **Productionization limitation.** evalmut's grader-family gates key off gradecore's `grader_id`
-  vocabulary, so pointing it at arbitrary external graders currently means labeling each port with its
-  contract-equivalent family id (done here, and noted per grader) or adding a family-declaration hook
-  to `EvalCase`. That hook is the natural next step for running evalmut against a framework's graders
-  unmodified.
+- **Running against external graders (resolved).** evalmut's grader-family gates key off gradecore's
+  `grader_id` vocabulary. To run against arbitrary external graders unmodified, a case now declares
+  `grader_family="valid_json"` (etc.) and the grader keeps reporting its own honest id — see the
+  `api_isjson` case, which declares the family while `pf_is_json` reports `grader_id="pf_is_json"` on
+  the finding card. The declaration is for operator gating only; reporting stays honest.
