@@ -1,0 +1,129 @@
+"""Run a set of operators against a suite and record what each mutation did.
+
+The loop is deliberately small and deterministic — no sampling, no LLM, so a run
+reproduces exactly, the same property gradecore is built on. For each case it first
+confirms the baseline is green (mutation testing on a red baseline is meaningless),
+then for each operator applies the mutation and reruns the grader.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Optional, Sequence
+
+from gradecore import GradeInput, Verdict
+
+from .case import EvalCase
+from .operator import MutationOperator
+from .outcome import OperatorType, Outcome, Polarity, outcome_for
+
+
+class BaselineError(Exception):
+    """A case whose grader does not pass its own reference output. Mutation testing
+    cannot proceed on it — the reference is mis-specified — so it is reported by name
+    rather than silently skipped."""
+
+
+@dataclass(frozen=True)
+class MutationResult:
+    case_name: str
+    grader_id: str
+    operator_id: str
+    family: str
+    polarity: Polarity
+    op_type: OperatorType
+    outcome: Outcome
+    real_origin: str
+    defect_shape: str
+    detail: str                       # what the grader said on the mutant
+    mutant_preview: str               # a one-line echo of the mutated field
+    grader_error: Optional[str] = None  # set if the grader raised on the mutant
+
+
+def _preview(s: object, n: int = 100) -> str:
+    t = " ".join(str(s).split())
+    return t if len(t) <= n else t[: n - 1] + "…"
+
+
+def _mutated_field_preview(op: MutationOperator, mutant: GradeInput) -> str:
+    val = getattr(mutant, op.field, None)
+    if isinstance(val, (list, tuple)):
+        val = " | ".join(map(str, val))
+    return _preview(val if val is not None else mutant.text)
+
+
+def run_case(case: EvalCase, operators: Sequence[MutationOperator]) -> list[MutationResult]:
+    """Apply every operator to one case. Raises BaselineError if the case's baseline
+    is not green — a caller that wants to tolerate that should use `run_suite`, which
+    collects baseline failures instead of raising."""
+    baseline = case.baseline()
+    if not baseline.passed:
+        raise BaselineError(
+            f"case {case.name!r}: grader {baseline.grader_id!r} fails its own reference "
+            f"output ({baseline.detail}). Fix the reference or the grader before mutating."
+        )
+    grader_id = baseline.grader_id
+
+    results: list[MutationResult] = []
+    for op in operators:
+        # An operator that mutates a field the grader does not judge is irrelevant to this
+        # case, not a finding about it — skip it silently rather than record a false NA that
+        # would suggest it had something to say. (Text operators on a tool-only grader, etc.)
+        if op.field not in case.judges:
+            continue
+        mutant = op.apply(case)
+        if mutant is None:
+            results.append(_result(case, grader_id, op, Outcome.NA,
+                                    "n/a: operator not applicable here", mutant_preview=""))
+            continue
+
+        grader_error: Optional[str] = None
+        try:
+            v: Verdict = case.grader(mutant)
+            passed = bool(v.passed)
+            detail = v.detail
+        except Exception as exc:  # a grader that crashes on a well-formed variant
+            # counts as not-passing: for a DEFECT that is a (crude) catch, for an
+            # EQUIVALENT it is brittleness. Either way, surface the crash.
+            passed = False
+            detail = f"grader raised: {type(exc).__name__}: {exc}"
+            grader_error = f"{type(exc).__name__}: {exc}"
+
+        outcome = outcome_for(op.polarity, passed)
+        results.append(_result(case, grader_id, op, outcome, detail,
+                               mutant_preview=_mutated_field_preview(op, mutant),
+                               grader_error=grader_error))
+    return results
+
+
+def run_suite(suite: Sequence[EvalCase], operators: Sequence[MutationOperator]
+              ) -> tuple[list[MutationResult], list[BaselineError]]:
+    """Run every case. Returns (results, baseline_failures). Baseline failures are
+    collected rather than raised so one mis-specified case doesn't abort the run — but
+    they are returned, not swallowed, so the caller reports them."""
+    results: list[MutationResult] = []
+    baseline_failures: list[BaselineError] = []
+    for case in suite:
+        try:
+            results.extend(run_case(case, operators))
+        except BaselineError as be:
+            baseline_failures.append(be)
+    return results, baseline_failures
+
+
+def _result(case: EvalCase, grader_id: str, op: MutationOperator, outcome: Outcome,
+            detail: str, *, mutant_preview: str,
+            grader_error: Optional[str] = None) -> MutationResult:
+    return MutationResult(
+        case_name=case.name,
+        grader_id=grader_id,
+        operator_id=op.id,
+        family=op.family,
+        polarity=op.polarity,
+        op_type=op.op_type,
+        outcome=outcome,
+        real_origin=op.real_origin,
+        defect_shape=op.defect_shape,
+        detail=detail,
+        mutant_preview=mutant_preview,
+        grader_error=grader_error,
+    )

@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "evalmut"
+version = "0.1.0"
+description = "Mutation testing for evals: inject known defects into the system under test and report which grader checks stay green. A surviving mutation is a hole in the eval."
+requires-python = ">=3.11"
+readme = "README.md"
+license = { text = "MIT" }
+dependencies = ["gradecore>=0.1.0"]
+
+[project.scripts]
+evalmut = "evalmut.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["evalmut*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
