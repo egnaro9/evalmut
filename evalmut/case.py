@@ -11,6 +11,16 @@ mis-specified reference is a loud error rather than a silently skipped one.
 passes it, `good` is by definition a correct output for this task; an operator that
 transforms `good` into something wrong has, relative to this reference, injected a
 real defect — no separate oracle required.
+
+Some operators need to know a bar that lives inside the grader's closure and is
+invisible from the outside — a numeric tolerance, a grounding threshold, which
+cosmetic changes this task's contract treats as still-correct, the expected tool
+plan. The honest answer is never to guess it (guessing a module default, or trusting
+a grader-emitted id label, is exactly what manufactured evalmut's own false findings
+in cold-critic pass 2). Instead the suite author DECLARES it here, and the operator
+either uses the declared bar or declines. Every such field defaults to the value that
+makes the dependent operator DECLINE, so an undecorated case can only ever be
+under-tested, never falsely accused.
 """
 from __future__ import annotations
 
@@ -31,12 +41,37 @@ class EvalCase:
     # overwhelming majority (scalar/text/safety graders); a tool or retrieval case names
     # its own fields so text operators don't fire on it and manufacture false findings.
     judges: tuple[str, ...] = ("text",)
+
+    # ── declared contract bars (each defaults to "operator declines") ────────────
     # The numeric acceptance band the grader uses, if this is a numeric-answer task. A
     # near-miss is a defect only if it falls OUTSIDE the tolerance — and that band lives in
-    # the grader's closure, invisible to an operator. Declaring it here lets the numeric
-    # operator perturb to just past the band (a provable defect) instead of guessing a delta
-    # that a tolerant grader is right to accept. Left None, the numeric operator declines.
+    # the grader's closure, invisible to an operator. Declaring it lets the numeric operator
+    # perturb to just past the band; it also cross-checks the declaration against the grader
+    # before trusting it. Left None, the numeric operator declines.
     num_tol: float | None = None
+    # This task's grader is supposed to require CONTENT in the answer (an exact/contains/
+    # number/JSON-style check), so a blank or unrelated output is a provable defect and the
+    # SANITY probes may fire. For gradecore's content graders this is inferred from grader_id;
+    # a custom grader must opt in, because a blank output is legitimately fine for an ABSENCE
+    # grader (injection_resistance, tool_misuse) and calling that vacuous is false (pass-2 C).
+    content_required: bool = False
+    # The cosmetic changes THIS task's contract treats as still-correct — any of
+    # "whitespace", "fence", "disclaimer". An EQUIVALENT operator claims "still correct" only
+    # when the change is declared here, because equivalence is a property of the task's
+    # contract, not something readable from a grader-emitted id: a composite grader can
+    # honestly carry a primitive's id yet also enforce length or format, so a fence or added
+    # whitespace legitimately fails it (cold-critic pass-2 B). Declared here, the equivalence
+    # claim rests on the author, not on a label the grader controls. Undeclared -> decline.
+    tolerates: tuple[str, ...] = ()
+    # The expected ordered tool plan, for a trajectory case. trajectory_drop_step proves a
+    # defect only by dropping a step whose removal pushes LCS coverage below the threshold —
+    # which requires knowing the plan (it lives in the grader closure). Left empty, the
+    # operator declines rather than blindly dropping the last call (cold-critic pass-2 E).
+    expected_trajectory: tuple[str, ...] = ()
+    # The trajectory coverage threshold (gradecore's default is 1.0). Paired with
+    # expected_trajectory to decide whether a dropped step is provably a defect.
+    trajectory_threshold: float = 1.0
+
     # Optional human-readable notes surfaced in reports; never load-bearing.
     intent: str = ""
     tags: tuple[str, ...] = field(default_factory=tuple)
@@ -48,7 +83,12 @@ class EvalCase:
 
 
 def case(name: str, grader: Grader, good: GradeInput, *, judges: tuple[str, ...] = ("text",),
-         num_tol: float | None = None, intent: str = "", tags: tuple[str, ...] = ()) -> EvalCase:
+         num_tol: float | None = None, content_required: bool = False,
+         tolerates: tuple[str, ...] = (), expected_trajectory: tuple[str, ...] = (),
+         trajectory_threshold: float = 1.0, intent: str = "",
+         tags: tuple[str, ...] = ()) -> EvalCase:
     """Terse constructor for suites written as data."""
     return EvalCase(name=name, grader=grader, good=good, judges=judges,
-                    num_tol=num_tol, intent=intent, tags=tags)
+                    num_tol=num_tol, content_required=content_required, tolerates=tolerates,
+                    expected_trajectory=expected_trajectory,
+                    trajectory_threshold=trajectory_threshold, intent=intent, tags=tags)

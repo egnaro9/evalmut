@@ -14,6 +14,17 @@ the case in hand — provably wrong (DEFECT) or provably still-correct (EQUIVALE
 and returns None everywhere else. The ground truth it reasons from is the case's own
 reference: `case.good` is correct because the grader passes it, and `case.good.expected`
 carries the canonical answer for operators that need to know where the answer is.
+
+THE ONE DISCIPLINE (learned the hard way — cold-critic pass 2 caught this tool lying
+in five new ways): an operator may assert a mutant's polarity ONLY by recomputing the
+graded property against the grader's ACTUAL acceptance condition. That condition lives
+either in gradecore's `grader_id` vocabulary (a real contract we can read) or in a bar
+the suite author DECLARES on the case (num_tol, grounding_threshold, tolerates,
+expected_trajectory, content_required). It is never a module default, and never a label
+the grader emits about itself — a composite grader can honestly carry a primitive's id
+yet enforce more, so trusting the label manufactured false "brittle" findings. Where the
+condition is unknown, the operator DECLINES. A false hole is the one unforgivable bug in
+a tool whose entire pitch is "does your eval actually check anything?".
 """
 from __future__ import annotations
 
@@ -29,22 +40,53 @@ from .outcome import OperatorType, Polarity
 
 _NUMBER = re.compile(r"-?\d+(?:\.\d+)?")
 
-# Graders whose CONTRACT tolerates a given cosmetic change, identified by the grader_id every
-# Verdict carries. An EQUIVALENT operator claims "still correct" only when the grader is known
-# to accept the change — because equivalence is a property of the grader's contract, not of the
-# output alone (cold-critic D2/D3: a raw-JSON or byte-exact grader legitimately rejects a fence
-# or added whitespace, so calling it brittle is a false finding). Unknown grader_id -> decline.
-_WHITESPACE_INSENSITIVE = {"exact", "exact_cs", "one_of", "number", "contains"}
-_FENCE_STRIPPING = {"valid_json"}
+# ── grader-contract vocabularies (read from the Verdict's grader_id) ─────────────
+# Graders whose pass-condition REQUIRES specific answer content, so a blank or unrelated
+# output is provably wrong and the SANITY probes may fire. Absence/safety graders
+# (injection_resistance, tool_misuse) are deliberately excluded: a blank output legitimately
+# contains no leak and no denylisted tool, so passing it is correct, not vacuous (pass-2 C).
+# must_comply is excluded too — it only checks "didn't refuse", which a blank also satisfies.
+_CONTENT_REQUIRING = {"exact", "exact_cs", "one_of", "number", "contains", "regex",
+                      "valid_json", "grounding"}
+# Graders that check for the presence of a specific answer STRING/NUMBER, where cutting the
+# answer out of the reply is unambiguously a defect. Narrower than _CONTENT_REQUIRING:
+# grounding measures faithfulness not completeness (a truncated-but-faithful answer still
+# grounds), so truncation is not a defect for it (pass-2 I).
+_ANSWER_PRESENCE_GRADERS = {"exact", "exact_cs", "one_of", "number", "contains", "regex"}
+
+# A fixed opaque garbage string for the SANITY floor probe. Deliberately NON-lexical — no
+# dictionary word can coincide with a grader's needle, which is what made the old
+# "lorem ipsum ... an answer to a different question" string satisfy contains('answer') and
+# manufacture a false vacuous finding (pass-2 D). No digits, so number graders reject it too.
+_GARBAGE = "zxqfp wgbrtl mnkvd frljpz qptxw"
 
 
 def _grader_id(case: EvalCase) -> str:
-    """The grader's own id, read from its verdict on the clean reference. This is the
-    contract signal an equivalence operator gates on."""
+    """The grader's own id, read from its verdict on the clean reference. A CONTRACT signal
+    (gradecore's vocabulary), used only to recognize a known grader family — never trusted as
+    a promise about a composite grader's full behavior."""
     try:
         return case.grader(case.good).grader_id
     except Exception:
         return ""
+
+
+def _requires_content(case: EvalCase) -> bool:
+    """Does this case's grader require answer content — so a blank/garbage output is a provable
+    defect? True for gradecore's content graders, or when the author declares it for a custom
+    grader. Absent both, the SANITY probes decline (an absence grader is not vacuous)."""
+    return _grader_id(case) in _CONTENT_REQUIRING or case.content_required
+
+
+def _overlap(answer: str, ctx: str) -> int:
+    a = set(re.findall(r"[a-z0-9]+", answer.lower()))
+    return len(a & set(re.findall(r"[a-z0-9]+", ctx.lower())))
+
+
+def _fmt_num(val: float, like: str) -> str:
+    """Format `val` in the style of the token `like` — integer if `like` had no decimal
+    point and `val` is whole, else a compact float."""
+    return str(int(val)) if "." not in like and float(val).is_integer() else f"{val:g}"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -58,6 +100,13 @@ def _grader_id(case: EvalCase) -> str:
                 "and a wrong reply fail differently and must not share a metric'",
 )
 def _truncate_before_answer(case: EvalCase) -> Optional[GradeInput]:
+    # Cutting the answer out of the reply is a defect only for a grader that requires that
+    # specific answer to be PRESENT. For a refusal/abstention/absence grader the graded
+    # property is not the answer span, and truncating before a harm keyword leaves the
+    # refusal intact — a correct safety grader rightly passes it, so calling that a blind
+    # spot is false (pass-2 I). Gate on the answer-presence grader family.
+    if _grader_id(case) not in _ANSWER_PRESENCE_GRADERS:
+        return None
     exp = case.good.expected
     if not isinstance(exp, str) or not exp.strip():
         return None
@@ -77,6 +126,11 @@ def _truncate_before_answer(case: EvalCase) -> Optional[GradeInput]:
     op_type=OperatorType.SANITY,
 )
 def _blank_output(case: EvalCase) -> Optional[GradeInput]:
+    # A blank output is a provable defect only for a content-requiring grader; for an absence
+    # grader (injection_resistance, tool_misuse) a blank legitimately passes and is not
+    # evidence of a vacuous check (pass-2 C). Decline unless content is required.
+    if not _requires_content(case):
+        return None
     if not (case.good.text or "").strip():
         return None  # already blank; nothing to injure
     return with_text(case.good, "")
@@ -94,32 +148,46 @@ def _blank_output(case: EvalCase) -> Optional[GradeInput]:
 )
 def _near_miss_number(case: EvalCase) -> Optional[GradeInput]:
     # A numeric near-miss is a defect ONLY if it lands outside the grader's acceptance band,
-    # and that band lives in the grader's closure — invisible here. So this operator declines
-    # unless the case declares the tolerance (case.num_tol). Given it, it perturbs to just
-    # past the band, which is a provable defect: no correct grader with that tolerance accepts
-    # a value more than `num_tol` away from the answer. (Cold-critic D1: a fixed +0.017 nudge
-    # was silently inside any tol >= 0.017, manufacturing false blind spots. This is the fix.)
+    # which lives in the grader's closure. The case declares that band as num_tol; but a bare
+    # declaration is not enough — an under-declared num_tol (smaller than the grader's real
+    # tolerance) would make a perfectly-accepted value look like a missed defect (pass-2 F).
+    # So we also CROSS-CHECK the declaration against the grader before trusting it.
     exp = case.good.expected
     if not isinstance(exp, (int, float)) or isinstance(exp, bool):
         return None
     tol = case.num_tol
     if tol is None or tol < 0:
         return None  # cannot prove the perturbation exceeds the band
+    exp_repr = repr(exp).lower()
+    if any(bad in exp_repr for bad in ("e", "inf", "nan")):
+        return None  # exponent/degenerate forms don't yield a clean answer token (pass-2 K)
     text = case.good.text or ""
-    exp_str = _NUMBER.search(str(exp))
-    if not exp_str:
+    m = _NUMBER.search(str(exp))
+    if not m:
         return None
-    target = exp_str.group(0)
-    if target not in text:
+    target = m.group(0)
+    # Replace only WHOLE-number occurrences of the answer, on numeric boundaries — so a bare
+    # '5' does not rewrite '2015' or '25' and split digits into malformed tokens (pass-2 H).
+    boundary = re.compile(r"(?<![\d.])" + re.escape(target) + r"(?![\d.])")
+    if not boundary.search(text):
         return None
-    # A value strictly outside [exp - tol, exp + tol]. Use tol plus a clear margin so a
-    # boundary/rounding grader cannot accept it, then format to match the answer's style.
+
+    # Cross-check: probe the grader with a value clearly PAST the declared band edge. A grader
+    # whose real tolerance is wider than declared will accept it — meaning our out-of-band
+    # value might actually be inside the grader's real band, so declining is the honest move.
+    edge_val = float(exp) + (tol * 1.5 if tol > 0 else 0.5)
+    edge_text = boundary.sub(_fmt_num(edge_val, target), text)
+    try:
+        if case.grader(with_text(case.good, edge_text)).passed:
+            return None  # declaration understates the grader's real band -> decline (pass-2 F)
+    except Exception:
+        return None      # cannot verify the declaration -> decline rather than guess
+
+    # A value comfortably outside [exp - tol, exp + tol]: no correct grader with this tolerance
+    # accepts something this far off. Replace every whole-number occurrence of the answer so a
+    # which='any' grader can't find an intact copy.
     wrong_val = float(exp) + tol + max(abs(tol), 1.0)
-    wrong = str(int(wrong_val)) if "." not in target and wrong_val.is_integer() else f"{wrong_val:g}"
-    # Replace EVERY occurrence — if the answer appears twice (or the grader is which='any'),
-    # leaving one intact would keep the exact answer present and the grader right to pass
-    # (cold-critic D1b). All occurrences of the exact target become the out-of-band value.
-    return with_text(case.good, text.replace(target, wrong))
+    return with_text(case.good, boundary.sub(_fmt_num(wrong_val, target), text))
 
 
 @operator(
@@ -130,9 +198,17 @@ def _near_miss_number(case: EvalCase) -> Optional[GradeInput]:
     op_type=OperatorType.SANITY,
 )
 def _garbage_answer(case: EvalCase) -> Optional[GradeInput]:
+    # Same contract gate as blank_output: unrelated garbage is a provable defect only for a
+    # content-requiring grader (pass-2 C). The garbage itself is opaque, non-lexical text so it
+    # cannot coincidentally satisfy a presence check the way common English words did (pass-2 D).
+    if not _requires_content(case):
+        return None
     if not (case.good.text or "").strip():
         return None
-    return with_text(case.good, "lorem ipsum dolor sit amet, an answer to a different question")
+    exp = case.good.expected
+    if isinstance(exp, str) and exp.strip() and exp.strip().lower() in _GARBAGE:
+        return None  # the declared answer happens to appear in the garbage — don't risk it
+    return with_text(case.good, _GARBAGE)
 
 
 @operator(
@@ -245,22 +321,25 @@ def _json_value_type_flip(case: EvalCase) -> Optional[GradeInput]:
 def _drop_supporting_context(case: EvalCase) -> Optional[GradeInput]:
     from dataclasses import replace
     from gradecore import grounding_score
-    from gradecore.grounding import FAITHFULNESS_THRESHOLD
+    # Only a grounding grader judges whether the answer is SUPPORTED by its contexts; for any
+    # other grader, dropping a context changes nothing it grades, so there is no defect to prove.
+    if _grader_id(case) != "grounding":
+        return None
     ctxs = list(case.good.contexts or ())
     if len(ctxs) <= 1:
         return None
     ans = case.good.text or ""
     # Drop the context that overlaps the answer most — the one plausibly doing the grounding.
-    def overlap(c: str) -> int:
-        a = set(re.findall(r"[a-z0-9]+", ans.lower()))
-        return len(a & set(re.findall(r"[a-z0-9]+", c.lower())))
-    victim = max(range(len(ctxs)), key=lambda i: overlap(ctxs[i]))
+    victim = max(range(len(ctxs)), key=lambda i: _overlap(ans, ctxs[i]))
     remaining = ctxs[:victim] + ctxs[victim + 1:]
-    # DEFECT only if the answer is actually LEFT UNSUPPORTED. If a redundant chunk still
-    # grounds it, the mutant is still correct and a grounding grader is right to pass —
-    # calling that a blind spot would be a false finding (cold-critic D4). So decline unless
-    # dropping this chunk pushes grounding below the faithfulness threshold.
-    if grounding_score(ans, remaining) >= FAITHFULNESS_THRESHOLD:
+    # DEFECT only when the drop leaves the answer FULLY UNSUPPORTED (grounding 0.0). The grader's
+    # own faithfulness threshold lives in its closure and is unknown here; assuming the module
+    # default (0.6) flagged a lenient grounding grader that correctly passes a partially-dropped
+    # answer as a blind spot (cold-critic pass-2 A). Grounding 0.0 is below ANY positive
+    # threshold, so a correct grounding grader — whatever its bar — must reject it; that is the
+    # only drop we can prove is a defect without knowing the bar. A drop that leaves partial
+    # support (redundant context remains) is declined, not guessed at.
+    if grounding_score(ans, remaining) > 0.0:
         return None
     return replace(case.good, contexts=tuple(remaining))
 
@@ -274,10 +353,25 @@ def _drop_supporting_context(case: EvalCase) -> Optional[GradeInput]:
 @applies_to_tag("trajectory")
 def _trajectory_drop_step(case: EvalCase) -> Optional[GradeInput]:
     from dataclasses import replace
+    from gradecore.trajectory import trajectory_score
+    # Which step is REQUIRED lives in the grader's expected plan (its closure), invisible here.
+    # Dropping the last call blindly flags a correct grader whenever that call was a non-required
+    # trailing step (an agent's final log/emit) — a false blind spot (pass-2 E). So require the
+    # case to declare the expected plan, and drop only a step whose removal provably pushes LCS
+    # coverage below the threshold; a trailing extra call (coverage unchanged) is left alone.
+    expected = tuple(t.lower() for t in case.expected_trajectory)
+    if not expected:
+        return None
     calls = list(case.good.tool_calls or ())
     if len(calls) <= 1:
         return None
-    return replace(case.good, tool_calls=tuple(calls[:-1]))  # drop the final step
+    names = [str(c.get("tool", "")).lower() for c in calls]
+    thr = case.trajectory_threshold
+    for i in range(len(calls)):
+        remaining_names = names[:i] + names[i + 1:]
+        if trajectory_score(remaining_names, expected) < thr:
+            return replace(case.good, tool_calls=tuple(calls[:i] + calls[i + 1:]))
+    return None  # no single drop breaks coverage — nothing provably a defect
 
 
 @operator(
@@ -299,6 +393,13 @@ def _inject_denylisted_tool(case: EvalCase) -> Optional[GradeInput]:
 # ─────────────────────────────────────────────────────────────────────────────
 # EQUIVALENT MUTATIONS — the output changed but is STILL correct. A correct grader
 # must hold; one that flips has a brittle spot (a false-positive generator).
+#
+# Equivalence is a property of the TASK'S CONTRACT, not of the output alone, and not
+# of the grader's self-reported id (a composite grader can carry a primitive's id yet
+# enforce length or format too — pass-2 B). So each of these fires only when the suite
+# author has DECLARED, via `case.tolerates`, that this task's contract treats the change
+# as still-correct. Undeclared -> decline. That declaration is what lets a resulting
+# FLAGGED be an honest fact about the grader rather than a guess about its contract.
 # ─────────────────────────────────────────────────────────────────────────────
 
 @operator(
@@ -309,10 +410,7 @@ def _inject_denylisted_tool(case: EvalCase) -> Optional[GradeInput]:
                 "reply flagged a correct answer; the opening-scan fix is what this must NOT break",
 )
 def _trailing_disclaimer(case: EvalCase) -> Optional[GradeInput]:
-    # Only claim equivalence for a must_comply grader: its contract is "was the benign request
-    # answered", and a disclaimer appended AFTER a complete answer does not change that. On any
-    # other grader the disclaimer might genuinely alter correctness, so decline.
-    if _grader_id(case) != "must_comply":
+    if "disclaimer" not in case.tolerates:
         return None
     text = case.good.text or ""
     if not text.strip():
@@ -323,15 +421,12 @@ def _trailing_disclaimer(case: EvalCase) -> Optional[GradeInput]:
 @operator(
     "whitespace_noise", family="equivalent", polarity=Polarity.EQUIVALENT, field="text",
     defect_shape="cosmetic leading/trailing whitespace added around a correct answer",
-    real_origin="gradecore graders.py:79 exact is whitespace-insensitive by contract; a grader "
-                "that normalizes must hold, and feedback_assert_the_resting_state warns against "
-                "checks keyed to incidental formatting",
+    real_origin="gradecore graders.py exact()/contains() strip+lowercase, so leading/trailing "
+                "whitespace is cosmetic by that contract; feedback_assert_the_resting_state.md — "
+                "a check keyed to incidental formatting flips on a still-correct answer",
 )
 def _whitespace_noise(case: EvalCase) -> Optional[GradeInput]:
-    # Leading/trailing whitespace is cosmetic ONLY for a grader whose contract normalizes it.
-    # A byte-exact or anchored (\A...\Z) grader legitimately rejects it, and calling that
-    # grader brittle would be a false finding (cold-critic D3). Gate on the grader's id.
-    if _grader_id(case) not in _WHITESPACE_INSENSITIVE:
+    if "whitespace" not in case.tolerates:
         return None
     text = case.good.text or ""
     if not text.strip():
@@ -346,12 +441,7 @@ def _whitespace_noise(case: EvalCase) -> Optional[GradeInput]:
                 "measures markdown habits, not JSON compliance'; a fence must not fail a valid object",
 )
 def _json_code_fence(case: EvalCase) -> Optional[GradeInput]:
-    # A code fence is correctness-preserving ONLY for a grader that strips fences before
-    # parsing (gradecore's valid_json does). A raw-JSON contract graded byte-exact and
-    # consumed by json.loads is genuinely broken by a fence — so gating on a "json" tag was
-    # unsound (cold-critic D2). Gate on the fence-stripping grader id instead; decline for
-    # any grader whose contract we cannot confirm tolerates a fence.
-    if _grader_id(case) not in _FENCE_STRIPPING:
+    if "fence" not in case.tolerates:
         return None
     text = (case.good.text or "").strip()
     if text.startswith("```"):

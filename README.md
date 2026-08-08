@@ -26,7 +26,7 @@ $ evalmut run demos/dogfood_gradecore.py
 ────────────────────────────────────────────────────────────────────────
   evalmut — does your eval actually check anything?
 ────────────────────────────────────────────────────────────────────────
-  mutation score    95.9%   (47 caught / 49 applied; 112 n/a)
+  mutation score    94.3%   (33 caught / 35 applied; 126 n/a)
   holes            2  (1 blind, 1 coverage-gap)
 
   BLIND SPOTS — a real defect shipped green; the check is present and broken
@@ -75,6 +75,17 @@ can't — no number to corrupt, no answer span to truncate, a field the grader d
 judge — it returns **N/A** and is excluded from the score. So a reported hole is never a
 guess about an ambiguous mutant; by construction the mutant had a known correct answer
 and the grader disagreed with it.
+
+When the bar that decides wrongness lives inside the grader's closure — a numeric
+tolerance, an expected tool plan, whether whitespace is cosmetic for the task — the
+operator does **not** guess it from a module default or trust a label the grader reports
+about itself (a composite grader can honestly carry a primitive's id yet enforce more).
+The suite *declares* that bar on the case (`num_tol`, `expected_trajectory`, `tolerates`,
+`content_required`), and the operator uses it — cross-checking it against the grader where
+it can — or declines. This is the discipline two rounds of adversarial cold-critique paid
+for: every false hole those passes found was an operator asserting polarity without
+recomputing the graded property against the grader's *real* acceptance condition. The
+regression tests (`test_D1`–`D4`, `test_P2A`–`P2K`) pin each one.
 
 ## Mined, not authored
 
@@ -126,8 +137,9 @@ A suite file just defines `suite` (a list of `EvalCase`) and, optionally, `opera
 - `outcome.py` — the four outcomes (caught / missed / flagged / n-a), the two polarities,
   the three operator types (KILL / DIAGNOSTIC / SANITY) that separate a *broken* check
   from a *missing* one.
-- `case.py` — an `EvalCase`: a grader, the reference-correct input it passes, and which
-  fields it judges.
+- `case.py` — an `EvalCase`: a grader, the reference-correct input it passes, which
+  fields it judges, and the declared contract bars (`num_tol`, `tolerates`,
+  `expected_trajectory`, `content_required`) an operator reads instead of guessing.
 - `operator.py` / `operators.py` — the operator contract and the mined catalog.
 - `runner.py` — baseline-green enforcement, apply, regrade, classify. Deterministic, no
   LLM-as-judge, so a run reproduces exactly.

@@ -27,6 +27,9 @@ def render(report: Report, *, verbose: bool = False) -> str:
     w(_BAR)
     w(f"  mutation score   {t.score * 100:5.1f}%   "
       f"({t.caught} caught / {t.applied} applied; {t.na} n/a)")
+    if report.crashing_defects:  # the score excludes these — say so, loudly, next to it
+        w(f"  ⚠ undetermined   {len(report.crashing_defects)} defect mutation(s) CRASHED the "
+          f"grader (excluded from the score — a crash is not a catch)")
     holes = len(report.holes)
     if holes == 0:
         w("  holes            none — every applied mutation was handled correctly")
@@ -49,7 +52,8 @@ def render(report: Report, *, verbose: bool = False) -> str:
              report.vacuous, verbose)
     _section(w, "BLIND SPOTS — a real defect shipped green; the check is present and broken",
              report.blind_spots, verbose)
-    _section(w, "ERRORS — the grader crashed on a well-formed mutant; it cannot render a verdict",
+    _section(w, "ERRORS — grader crashed on a well-formed mutant (a crash on a DEFECT is an "
+                "undetermined blind spot, not a pass)",
              report.errors, verbose)
     _section(w, "BRITTLE SPOTS — the check fails a still-correct output (a false-positive)",
              report.brittle_spots, verbose)
@@ -91,4 +95,6 @@ def render_short(report: Report) -> str:
     return (f"evalmut {t.score*100:.0f}%  "
             f"vacuous={len(report.vacuous)} blind={len(report.blind_spots)} "
             f"error={len(report.errors)} brittle={len(report.brittle_spots)} "
-            f"gap={len(report.coverage_gaps)}")
+            f"gap={len(report.coverage_gaps)}"
+            + (f"  ⚠undetermined={len(report.crashing_defects)}"
+               if report.crashing_defects else ""))

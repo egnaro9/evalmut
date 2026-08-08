@@ -6,6 +6,14 @@ equivalent). NA is excluded from the denominator — an operator that had nothin
 say about a case is not evidence either way, and folding it in would let a suite
 inflate its score by being mostly inapplicable.
 
+NA and ERROR are both out of the denominator, but for different reasons and with a
+catch: NA is genuinely inapplicable, while ERROR is an *undetermined* verdict (the
+grader crashed). Excluding ERROR is right — a crash is not a catch — but it means a
+grader that crashes on the very defects it can't handle would read a clean 100% with an
+empty blind-spots list. So `crashing_defects` re-surfaces exactly those (a DEFECT the
+grader raised on), and the report prints them beside the blind spots; a defect-crash can
+inflate the number but can never hide.
+
 But the number is the least important output. The holes are the product: each MISSED
 is a defect class the eval is blind to, each FLAGGED is a correct-output class it
 breaks on, and every one names the real documented failure it is the shape of. That
@@ -103,6 +111,15 @@ class Report:
         return [h for h in self.holes if h.outcome is Outcome.ERROR]
 
     @property
+    def crashing_defects(self) -> list[MutationResult]:
+        """DEFECT mutants the grader CRASHED on rather than rejecting. These are excluded from
+        the score as undetermined — but a grader that crashes on a defect did not catch it, so
+        they must be surfaced beside the blind spots, never allowed to silently empty that list
+        (a grader made to raise on the defects it can't handle would otherwise read as clean —
+        cold-critic pass-2 G)."""
+        return [h for h in self.errors if h.polarity is Polarity.DEFECT]
+
+    @property
     def clean(self) -> bool:
         return not self.holes
 
@@ -119,11 +136,12 @@ def score(results: Sequence[MutationResult]) -> Report:
         by_operator[r.operator_id] = by_operator[r.operator_id].with_outcome(r.outcome)
         by_family[r.family] = by_family[r.family].with_outcome(r.outcome)
 
-    # Order by how alarming the hole is:
+    # Order by how alarming the hole is (must match the rank() body below):
     #   0 vacuous     — a SANITY probe survived; the grader asserts nothing, cannot fail
     #   1 blind spot  — a KILL defect shipped green; a present check is broken
-    #   2 brittle     — an EQUIVALENT was flagged; the check false-positives on correct output
-    #   3 coverage gap— a DIAGNOSTIC survived; no check guards this shape (often expected)
+    #   2 error       — the grader crashed on a well-formed mutant; no verdict at all
+    #   3 brittle     — an EQUIVALENT was flagged; the check false-positives on correct output
+    #   4 coverage gap— a DIAGNOSTIC survived; no check guards this shape (often expected)
     def rank(r: MutationResult) -> int:
         if r.outcome is Outcome.MISSED and r.op_type is OperatorType.SANITY:
             return 0
