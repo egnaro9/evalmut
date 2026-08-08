@@ -515,13 +515,21 @@ def _inject_denylisted_tool(case: EvalCase) -> Optional[GradeInput]:
 # FLAGGED be an honest fact about the grader rather than a guess about its contract.
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Graders whose contract is broken by ANY trailing prose BY DESIGN — an exact/identity match, a
-# JSON parse, a bare-number/regex/option match. Appending a disclaimer to these is not a cosmetic
-# still-correct change, so a rejection is not brittleness; trailing_disclaimer declines on them
-# (pass-4: valid_json + tolerates=('disclaimer',) was a false brittle). It fires on content-scanning
-# graders (contains, must_comply) and custom graders, where a trailing disclaimer after a complete
-# answer preserves the graded property — its whole mined origin (must_comply's opening scan).
-_TRAILING_PROSE_BREAKS = {"exact", "exact_cs", "valid_json", "number", "one_of", "regex"}
+# An EQUIVALENT operator can prove its change is still-correct only for a grader that checks for the
+# PRESENCE of required content. Two grader families make that impossible, so the operators below
+# decline on them:
+#  - IDENTITY/format graders (exact/exact_cs/one_of/number/regex): a byte/format match that ANY
+#    trailing prose or a code fence breaks BY DESIGN — a rejection is not brittleness.
+#  - ABSENCE graders (injection_resistance/tool_misuse): they PASS iff a forbidden marker is absent,
+#    so appending arbitrary text — including the operator's own disclaimer/fence strings, which
+#    contain words like "note"/"advice" — can itself introduce the marker and flip the verdict, which
+#    is not the grader being brittle (cold-critic pass-6). This mirrors why the SANITY probes already
+#    exclude absence graders via _requires_content.
+_IDENTITY_GRADERS = {"exact", "exact_cs", "one_of", "number", "regex"}
+_ABSENCE_GRADERS = {"injection_resistance", "tool_misuse"}
+# valid_json also breaks on trailing prose (it must parse), but a code FENCE is exactly what it
+# tolerates (it strips fences) — so it is in the trailing-prose skip set but NOT the fence one.
+_TRAILING_PROSE_BREAKS = _IDENTITY_GRADERS | {"valid_json"}
 
 
 @operator(
@@ -534,7 +542,7 @@ _TRAILING_PROSE_BREAKS = {"exact", "exact_cs", "valid_json", "number", "one_of",
 def _trailing_disclaimer(case: EvalCase) -> Optional[GradeInput]:
     if "disclaimer" not in case.tolerates:
         return None
-    if _grader_id(case) in _TRAILING_PROSE_BREAKS:
+    if _grader_id(case) in _TRAILING_PROSE_BREAKS or _grader_id(case) in _ABSENCE_GRADERS:
         return None
     text = case.good.text or ""
     if not text.strip():
@@ -575,6 +583,11 @@ def _whitespace_noise(case: EvalCase) -> Optional[GradeInput]:
 )
 def _json_code_fence(case: EvalCase) -> Optional[GradeInput]:
     if "fence" not in case.tolerates:
+        return None
+    # A code fence provably breaks an identity/format match and can carry an absence grader's marker;
+    # decline on both, mirroring trailing_disclaimer (pass-6 symmetry). It fires on a fence-STRIPPING
+    # grader (valid_json) or a content-scanning one, where a fence is genuinely correctness-preserving.
+    if _grader_id(case) in _IDENTITY_GRADERS or _grader_id(case) in _ABSENCE_GRADERS:
         return None
     text = (case.good.text or "").strip()
     if text.startswith("```"):

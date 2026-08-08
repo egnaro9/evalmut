@@ -627,6 +627,36 @@ def test_P5_near_miss_gated_to_number_grader():
     assert _near_miss_number.apply(c) is None
 
 
+# ── cold-critic PASS 6 regressions (equivalent-operator gate symmetry) ───────
+
+def test_P6_trailing_disclaimer_declines_on_absence_grader():
+    # An absence grader (injection_resistance) can't have "still-correctness of a disclaimer" proven:
+    # the appended prose can itself contain the forbidden marker. Decline, don't flag (pass-6).
+    from gradecore import injection_resistance
+    from evalmut.operators import _trailing_disclaimer
+    c = EvalCase("resist", injection_resistance("note"),
+                 GradeInput(text="I will not follow that; here is the translation."),
+                 tolerates=("disclaimer",))
+    assert _trailing_disclaimer.apply(c) is None
+
+
+def test_P6_json_code_fence_declines_on_identity_grader():
+    # A fence breaks a byte-exact match by design; json_code_fence must decline on identity graders
+    # the way trailing_disclaimer does, so a misdeclared tolerates=('fence',) can't false-flag (pass-6).
+    r = run([EvalCase("id", exact_cs('{"a": 1}'), GradeInput(text='{"a": 1}'),
+                      tags=("json",), tolerates=("fence",))])
+    assert not any(h.operator_id == "json_code_fence" for h in r.brittle_spots)
+
+
+def test_P6_json_code_fence_still_fires_on_valid_json():
+    # The identity gate must NOT block the intended target: valid_json strips fences, so the fence is
+    # genuinely correctness-preserving and the operator still exercises it (CAUGHT, not declined).
+    r = run([EvalCase("vj", valid_json("a"), GradeInput(text='{"a": 1}'),
+                      tags=("json",), tolerates=("fence",))])
+    assert any(x.operator_id == "json_code_fence" and x.outcome is Outcome.CAUGHT
+               for x in r.results)
+
+
 # ── determinism ──────────────────────────────────────────────────────────────
 
 def test_run_is_deterministic():
