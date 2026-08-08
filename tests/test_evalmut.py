@@ -753,6 +753,20 @@ def test_case_variant_declines_without_declaration():
     assert not any(h.operator_id == "case_variant" for h in r.brittle_spots)
 
 
+def test_case_variant_declines_on_unicode_case_expansion():
+    # swapcase is NOT a pure case toggle for German ß (ß->SS) or ligatures — a genuinely
+    # case-insensitive grader rejects the mutant for changed letter identity, not case, so the
+    # operator must decline rather than report a false brittle (new-ops audit).
+    from evalmut.operators import _case_variant
+    for text in ("Straße", "ﬀ ligature", "İstanbul"):
+        c = EvalCase("u", exact(text), GradeInput(text=text, expected=text), tolerates=("case",))
+        assert _case_variant.apply(c) is None, f"should decline on {text!r}"
+    # ...but still fires on ordinary Latin text (with diacritics that swapcase round-trips):
+    for text in ("Hello World", "naïve", "MixedCASE 42!"):
+        c = EvalCase("l", exact(text), GradeInput(text=text, expected=text), tolerates=("case",))
+        assert _case_variant.apply(c) is not None, f"should fire on {text!r}"
+
+
 def test_json_value_corruption_is_coverage_gap_not_blind():
     # A keys-only JSON validator is blind to a WRONG VALUE of the right type — a coverage gap
     # (DIAGNOSTIC), never a blind spot.

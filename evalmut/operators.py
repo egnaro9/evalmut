@@ -691,20 +691,25 @@ def _json_code_fence(case: EvalCase) -> Optional[GradeInput]:
                 "that treats casing as cosmetic is brittle if graded case-sensitively",
 )
 def _case_variant(case: EvalCase) -> Optional[GradeInput]:
-    # Fires only when the task DECLARES casing cosmetic (tolerates 'case'). swapcase changes every
-    # letter's case but PRESERVES LENGTH and every non-letter, so there is no orthogonal length/format
-    # dimension to trip: any rejection is attributable to case-sensitivity, which is exactly the
-    # brittleness a case-cosmetic task is asserting the grader must not have. Declines on ABSENCE
-    # graders (symmetric with the other EQUIVALENT operators) since a case change is not a cosmetic
-    # still-correctness we can assert for a forbidden-marker check.
+    # Fires only when the task DECLARES casing cosmetic (tolerates 'case'), and only when swapcase is a
+    # PURE, case-fold-reversible toggle for this text — i.e. it changes nothing but letter case. That
+    # is the invariant the "no orthogonal dimension" argument needs, and swapcase does NOT satisfy it
+    # for every string: German ß -> SS (length grows), the ligatures ﬀ/ﬁ -> FF/FI, Turkish İ, etc.
+    # change letter IDENTITY, so a genuinely case-insensitive grader rejects them for a reason that is
+    # not case-sensitivity — reporting that as brittle is a false FLAGGED (cold-critic new-ops audit).
+    # Guarding on sc.lower()==text.lower() and sc.swapcase()==text declines exactly those cases while
+    # still firing on ordinary Latin text. Declines on ABSENCE graders (symmetric with the siblings).
     if "case" not in case.tolerates:
         return None
     if _family(case) in _ABSENCE_GRADERS:
         return None
     text = case.good.text or ""
-    if not text.strip() or text.swapcase() == text:  # no letters to flip
+    if not text.strip():
         return None
-    return with_text(case.good, text.swapcase())
+    sc = text.swapcase()
+    if sc == text or sc.lower() != text.lower() or sc.swapcase() != text:
+        return None  # no letters to flip, or swapcase changed more than case (Unicode expansion)
+    return with_text(case.good, sc)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
