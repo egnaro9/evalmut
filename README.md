@@ -91,10 +91,12 @@ recomputing the graded property against the grader's *real* acceptance condition
 hardcoded threshold, a self-reported id, a fixed-magnitude mutant that tripped an
 orthogonal constraint, a formatting quirk that defeated a cross-check, a text
 transformation the grader's own tokenizer re-read differently, a decline-gate one operator
-carried and its siblings didn't. The confirmed-false-positive count per round fell
-**4 → 12 → 6 → 7 → 2 → 0 → 0 → 0** and the last two passes found nothing to fix; the
-regression tests (`test_D1`–`D4`, `test_P2A`–`P2K`, `test_P3F1`–`F8`, `test_P4_*`,
-`test_P5_*`, `test_P6_*`, `test_P7_*`) pin every one. The through-line is a single invariant:
+carried and its siblings didn't. The early rounds fixed the bulk (a dozen at the peak);
+by round six the tool-fault false positives on a well-formed suite reached **zero** and
+held through rounds seven and eight, which surfaced only gate-symmetry issues that bite a
+misdeclared case, never a well-formed one. The regression tests (`test_D1`–`D4`,
+`test_P2A`–`P2K`, `test_P3F1`–`F8`, `test_P4_*`, `test_P5_*`, `test_P6_*`, `test_P7_*`) pin
+every one. The through-line is a single invariant:
 **an operator asserts a hole only where it can recompute the graded property against the
 grader's real acceptance condition; everywhere else it declines.**
 

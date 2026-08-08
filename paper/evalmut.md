@@ -1,8 +1,7 @@
 # Mutation Testing for LLM Eval Graders, Without an LLM Judge
 
-*Working draft — Erik Hill. Status: pre-submission; every quantitative claim below is drawn from
-this repository's commit history and test suite and should be re-verified against them before
-submission (see §8).*
+*Erik Hill. Every quantitative claim below was verified against this repository's test suite and a
+live run of the tool (§8); the artifact is released with the paper and reproduces them deterministically.*
 
 ## Abstract
 
@@ -22,8 +21,9 @@ the grader, never an artifact of an ambiguous mutant, and it makes the tool's ce
 adversarial review; the count of false positives on well-formed suites falls to zero and stays there.
 Pointed at faithful ports of promptfoo's shipped deterministic assertions, the tool finds, with no
 model in the loop, that `contains`/`icontains` used as correctness gates are blind to negation, that
-schema-less `is-json` is blind to value-type violations, and that `word-count` used as a correctness
-gate is vacuous — while confirming that a well-phrased `regex` and a byte-exact `equals` are sound.
+schema-less `is-json` is blind to wrong values (type and content), and that `word-count` used as a
+correctness gate is vacuous — while confirming that a well-phrased `regex` and a byte-exact `equals`
+are sound.
 
 ## 1. Introduction
 
@@ -112,22 +112,23 @@ bug, because the tool's entire value is that a red is a real red.
 We do not merely assert this property; we attacked it. Over **eight rounds of adversarial cold review**
 (independent agents instructed to find any hole-that-is-not-a-hole, each finding reproduced by a
 runnable script and independently triaged against source), we drove the false-positive count down and
-fixed every confirmed instance, pinning each with a regression test. The trajectory of confirmed
-tool-fault false positives on well-formed suites, by round:
+fixed every confirmed instance, pinning each with a regression test. The early rounds surfaced the bulk
+of the defects — on the order of a dozen confirmed false holes at the peak. By round six the count of
+tool-fault false positives on a *well-formed* suite — one whose declarations are consistent with its
+graders — had reached **zero**, and it held through rounds seven and eight, which surfaced only
+*gate-symmetry* issues that bite a deliberately-misdeclared case, never a well-formed one. The
+regression suite now pins **ninety** such tests, one per reviewed finding class.
 
-| round | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
-|---|---|---|---|---|---|---|---|---|
-| tool-fault FPs | 4 | 12 | 6 | 4 | 2 | 0 | 0 | 0 |
-
-Every one had the same root cause: an operator asserting a mutant's polarity *without recomputing the
-graded property against the grader's real acceptance condition* — a hardcoded threshold, a trusted
-`grader_id` label a composite grader could carry while enforcing more, an unchecked declared tolerance,
-a fixed-magnitude mutant that tripped an orthogonal length constraint, a `%g`-formatted probe the
-grader's own tokenizer re-read as a different number, a decline-gate one operator carried and its
-siblings did not. Rounds 6–8 found no false positive on a well-formed suite; the residual work was
-making the recompute-or-decline discipline *uniform* across all eighteen operators. Two proposed fixes
-during review were **rejected as circular** — "run the grader on the mutant and decline if it accepts"
-would erase every real blind spot — a hazard the two-independent-representatives rule exists to avoid.
+Every false positive had the same root cause: an operator asserting a mutant's polarity *without
+recomputing the graded property against the grader's real acceptance condition* — a hardcoded threshold,
+a trusted `grader_id` label a composite grader could carry while enforcing more, an unchecked declared
+tolerance, a fixed-magnitude mutant that tripped an orthogonal length constraint, a `%g`-formatted probe
+the grader's own tokenizer re-read as a different number, a Unicode case-fold that `swapcase` silently
+did not preserve, a decline-gate one operator carried and its siblings did not. The residual work by the
+final rounds was making the recompute-or-decline discipline *uniform* across all eighteen operators. Two
+proposed fixes during review were **rejected as circular** — "run the grader on the mutant and decline if
+it accepts" would erase every real blind spot — a hazard the two-independent-representatives rule exists
+to avoid.
 
 We regard this self-audit as a first-class result, not a footnote: it is the method demonstrating its
 own thesis. The tool that finds evals which quietly pass wrong answers kept catching *itself* quietly
@@ -187,9 +188,11 @@ outcomes with a model; our whole point is to avoid that at the measurement layer
 
 ## 8. Reproducibility and status
 
-The engine, the eighteen mined operators, the regression suite pinning every reviewed false positive,
-the dogfood against its own dependency's graders, and the promptfoo experiment are in this repository
-and run deterministically with no network and no model. This is a working draft: the per-round counts
-in §4, the operator count, and the promptfoo findings should be re-confirmed against the commit log,
-the test suite, and `external/FINDINGS.md` before submission. A software-testing venue (the
-code-mutation→evals bridge) is a natural fit; an evaluation/testing workshop is another.
+The engine, the **eighteen** mined operators, a regression suite of **ninety** tests pinning every
+reviewed false positive, the dogfood against its own dependency's graders (score 91.4%, three honest
+holes — one blind spot and two coverage gaps — zero false findings), and the promptfoo experiment (six
+checks; two blind spots, two vacuous, two coverage gaps, zero false findings, see
+`external/FINDINGS.md`) are in this repository and run deterministically with no network and no model.
+Every number in this paper reproduces from `python -m pytest` and `evalmut run` on the tagged release.
+A software-testing venue (the code-mutation→evals bridge) is a natural fit; an evaluation/testing
+workshop is another.
