@@ -71,7 +71,7 @@ suite = [
              GradeInput(text="done",
                         tool_calls=({"tool": "plan"}, {"tool": "search"}, {"tool": "answer"})),
              judges=("tool_calls",), tags=("trajectory",),
-             expected_trajectory=("plan", "search", "answer")),
+             expected_trajectory=("plan", "search", "answer"), trajectory_threshold=1.0),
 
     # grounding / retrieval — one context solely supports the answer; the other is unrelated,
     # so dropping the supporting chunk leaves the answer fully unsupported (a provable defect a

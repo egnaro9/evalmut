@@ -88,7 +88,8 @@ def _defect_case_for(op):
     mutant really is wrong."""
     g = GradeInput
     by_id = {
-        "truncate_before_answer": EvalCase("t", contains("42"), g(text="the total is 42", expected="42")),
+        "truncate_before_answer": EvalCase("t", exact("42", scope="last_line"),
+                                           g(text="the total is\n42", expected="42")),
         "blank_output": EvalCase("b", contains("answer"), g(text="the answer is here")),
         "near_miss_number": EvalCase("n", number(42, tol=0.1),
                                      g(text="the total is 42", expected=42), num_tol=0.1),
@@ -114,7 +115,7 @@ def _defect_case_for(op):
                                          g(text="done",
                                            tool_calls=({"tool": "aa"}, {"tool": "bb"}, {"tool": "cc"})),
                                          judges=("tool_calls",), tags=("trajectory",),
-                                         expected_trajectory=("aa", "bb")),
+                                         expected_trajectory=("aa", "bb"), trajectory_threshold=1.0),
         "inject_denylisted_tool": EvalCase("id", contains("x"),
                                            g(text="x", tool_calls=({"tool": "safe"},), expected="rm"),
                                            tags=("tool_policy",)),
@@ -351,7 +352,7 @@ def test_P2E_trajectory_caught_on_required_step_when_declared():
                     tool_calls=({"tool": "plan"}, {"tool": "search"}, {"tool": "log"}))
     r = run([EvalCase("tr", trajectory("plan", "search"), gi,
                       judges=("tool_calls",), tags=("trajectory",),
-                      expected_trajectory=("plan", "search"))])
+                      expected_trajectory=("plan", "search"), trajectory_threshold=1.0)])
     # it drops a REQUIRED step (coverage < 1.0); the correct grader rejects it -> CAUGHT.
     assert not r.blind_spots
     assert any(x.operator_id == "trajectory_drop_step" and x.outcome is Outcome.CAUGHT
@@ -411,6 +412,102 @@ def test_P2K_near_miss_declines_on_exponent_notation():
     c = EvalCase("x", number(5e-07, tol=1e-9),
                  GradeInput(text="the probability is 5e-07", expected=5e-07), num_tol=1e-9)
     assert _near_miss_number.apply(c) is None
+
+
+# ── cold-critic PASS 3 regressions (the cross-check made whole across operators) ─
+
+def test_P3F1_equivalent_declines_when_rejection_is_orthogonal():
+    # A task that truly tolerates a disclaimer (short one passes) but ALSO bounds length: the
+    # operator's fixed 65-char disclaimer trips the length budget. That rejection is on LENGTH,
+    # not the disclaimer tolerance, so it must NOT be reported brittle (pass-3 F1).
+    from gradecore import must_comply, Verdict
+    mc = must_comply("paris")
+    CAP = 85
+
+    def concise_comply(inp):
+        base = mc(inp)
+        ok = base.passed and len(inp.text or "") <= CAP
+        return Verdict(passed=ok, score=1.0 if ok else 0.0,
+                       severity="none" if ok else "med", detail="concise", grader_id="must_comply")
+    good = GradeInput(text="The capital of France is Paris.")  # 31 chars; a short disclaimer fits
+    r = run([EvalCase("cc", concise_comply, good, tags=("must_comply",), tolerates=("disclaimer",))])
+    assert not r.brittle_spots
+
+
+def test_P3F1_equivalent_still_flags_a_genuinely_brittle_grader():
+    # The attribution must not neuter true positives: a grader that rejects EVEN a minimal
+    # in-class change is genuinely brittle and is still flagged.
+    liar = bool_grader(lambda t: t == "42", "exact")  # byte-exact; rejects any whitespace
+    r = run([EvalCase("liar", liar, GradeInput(text="42", expected="42"), tolerates=("whitespace",))])
+    assert any(h.operator_id == "whitespace_noise" for h in r.brittle_spots)
+
+
+def test_P3F2_near_miss_large_magnitude_under_declared_declines():
+    # exp >= 1e6 used to render the edge probe as '1e+06' (scientific), which gradecore's parser
+    # misreads as 1, defeating the cross-check -> false blind. Fixed-point _fmt_num restores it.
+    r = run([EvalCase("big", number(1000000, tol=3.0),
+                      GradeInput(text="The count is 1000000 widgets.", expected=1000000),
+                      num_tol=1.0)])
+    assert not r.blind_spots
+
+
+def test_P3F3_trajectory_declines_without_declared_threshold():
+    # A lenient grader (threshold 0.6) that accepts a partial trajectory must not be flagged
+    # blind just because the module default was the strictest bar (pass-3 F3).
+    gi = GradeInput(text="done",
+                    tool_calls=({"tool": "a"}, {"tool": "b"}, {"tool": "c"}))
+    r = run([EvalCase("t", trajectory("a", "b", "c", threshold=0.6), gi,
+                      judges=("tool_calls",), tags=("trajectory",),
+                      expected_trajectory=("a", "b", "c"))])  # trajectory_threshold NOT declared
+    assert not r.blind_spots
+
+
+def test_P3F7_truncate_declines_on_contains_and_regex():
+    # For contains/regex the acceptance condition is the needle/pattern (in the closure), NOT
+    # case.expected — truncating before `expected` can leave the needle intact and the grader is
+    # right to pass, so truncate must decline on these families (pass-3 F7).
+    from gradecore import regex
+    r1 = run([EvalCase("c", contains("Paris"),
+                       GradeInput(text="Paris is the capital of France.", expected="France"))])
+    assert not any(h.operator_id == "truncate_before_answer" for h in r1.blind_spots)
+    r2 = run([EvalCase("r", regex("Paris"),
+                       GradeInput(text="Paris is the capital of France.", expected="France"))])
+    assert not any(h.operator_id == "truncate_before_answer" for h in r2.blind_spots)
+
+
+def test_P3F5_no_false_vacuous_on_structural_regex():
+    # A regex that accepts "five lowercase words" genuinely fails on 12345 / blank / 3 words, so
+    # it is NOT vacuous — even though the opaque garbage happens to match its shape (pass-3 F5).
+    from gradecore import regex
+    g = regex(r"^[a-z]+ [a-z]+ [a-z]+ [a-z]+ [a-z]+$")
+    r = run([EvalCase("five", g, GradeInput(text="alpha bravo delta gamma sigma"))])
+    assert not r.vacuous
+
+
+def test_P3F5_no_false_vacuous_on_empty_only_grader():
+    # A grader that accepts ONLY "" (rejects everything else) is discriminating, not vacuous —
+    # the blank probe must corroborate against the disjoint garbage before claiming vacuity.
+    from gradecore import regex
+    r = run([EvalCase("empty_only", regex(r"^$"), GradeInput(text=""), content_required=True)])
+    # baseline is "" which regex(^$) passes; but the grader is not vacuous, so no vacuous finding
+    assert not r.vacuous
+
+
+def test_P3F5_truly_vacuous_still_caught():
+    # The corroboration must not suppress a genuinely vacuous grader (passes both garbages).
+    r = run([EvalCase("stamp", bool_grader(lambda t: True, "always"),
+                      GradeInput(text="anything", expected="42"), content_required=True)])
+    assert r.vacuous
+
+
+def test_P3F8_json_type_flip_declines_on_non_json_grader():
+    # A value type-flip is a defect only for a JSON-structure grader; on a contains() grader that
+    # merely sees JSON, the flipped object still contains the word -> no hole (pass-3 F8).
+    r = run([EvalCase("t", contains("temperature"),
+                      GradeInput(text='{"temperature": 72, "unit": "F"}', expected="temperature"),
+                      tags=("presence_check",))])
+    assert not any(h.operator_id == "json_value_type_flip"
+                   for h in (r.coverage_gaps + r.blind_spots))
 
 
 # ── determinism ──────────────────────────────────────────────────────────────

@@ -26,7 +26,7 @@ $ evalmut run demos/dogfood_gradecore.py
 ────────────────────────────────────────────────────────────────────────
   evalmut — does your eval actually check anything?
 ────────────────────────────────────────────────────────────────────────
-  mutation score    94.3%   (33 caught / 35 applied; 126 n/a)
+  mutation score    94.1%   (32 caught / 34 applied; 127 n/a)
   holes            2  (1 blind, 1 coverage-gap)
 
   BLIND SPOTS — a real defect shipped green; the check is present and broken
@@ -82,10 +82,12 @@ operator does **not** guess it from a module default or trust a label the grader
 about itself (a composite grader can honestly carry a primitive's id yet enforce more).
 The suite *declares* that bar on the case (`num_tol`, `expected_trajectory`, `tolerates`,
 `content_required`), and the operator uses it — cross-checking it against the grader where
-it can — or declines. This is the discipline two rounds of adversarial cold-critique paid
+it can — or declines. This is the discipline three rounds of adversarial cold-critique paid
 for: every false hole those passes found was an operator asserting polarity without
-recomputing the graded property against the grader's *real* acceptance condition. The
-regression tests (`test_D1`–`D4`, `test_P2A`–`P2K`) pin each one.
+recomputing the graded property against the grader's *real* acceptance condition — a
+hardcoded threshold, a self-reported id, a fixed-magnitude mutant that tripped an
+orthogonal constraint, a formatting quirk that defeated a cross-check. The regression
+tests (`test_D1`–`D4`, `test_P2A`–`P2K`, `test_P3F1`–`F8`) pin each one.
 
 ## Mined, not authored
 

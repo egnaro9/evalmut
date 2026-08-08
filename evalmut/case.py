@@ -68,9 +68,12 @@ class EvalCase:
     # which requires knowing the plan (it lives in the grader closure). Left empty, the
     # operator declines rather than blindly dropping the last call (cold-critic pass-2 E).
     expected_trajectory: tuple[str, ...] = ()
-    # The trajectory coverage threshold (gradecore's default is 1.0). Paired with
-    # expected_trajectory to decide whether a dropped step is provably a defect.
-    trajectory_threshold: float = 1.0
+    # The trajectory coverage threshold the grader enforces (gradecore's default is 1.0, but a
+    # lenient grader may accept partial coverage). Defaults to None = DECLINE: 1.0 is the STRICTEST
+    # bar, not a safe default — trusting it flags a lenient grader that correctly accepts a partial
+    # trajectory as a blind spot (cold-critic pass-3 F3). Declare it (with expected_trajectory) to
+    # let trajectory_drop_step fire.
+    trajectory_threshold: float | None = None
 
     # Optional human-readable notes surfaced in reports; never load-bearing.
     intent: str = ""
