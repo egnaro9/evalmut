@@ -99,7 +99,13 @@ def _grader_cleanly_passes(case: EvalCase, text: str) -> bool:
 def _requires_content(case: EvalCase) -> bool:
     """Does this case's grader require answer content — so a blank/garbage output is a provable
     defect? True for gradecore's content graders, or when the author declares it for a custom
-    grader. Absent both, the SANITY probes decline (an absence grader is not vacuous)."""
+    grader. Absent both, the SANITY probes decline (an absence grader is not vacuous). A KNOWN
+    absence grader (injection_resistance/tool_misuse) is excluded UNCONDITIONALLY — a blank/garbage
+    output legitimately leaks no forbidden marker, so even a (grader-contradicting) content_required
+    declaration cannot make it a defect; the content_required OR-branch must not override that
+    (pass-7 — mirrors the unconditional absence gate the EQUIVALENT operators carry)."""
+    if _grader_id(case) in _ABSENCE_GRADERS:
+        return False
     return _grader_id(case) in _CONTENT_REQUIRING or case.content_required
 
 
@@ -466,6 +472,20 @@ def _trajectory_drop_step(case: EvalCase) -> Optional[GradeInput]:
                      # decline sentinel — trusting it flagged a lenient (threshold<1.0) grader that
                      # correctly accepts a partial trajectory as a blind spot (cold-critic pass-3
                      # F3). Fire only against the author-declared bar, matching num_tol's discipline.
+    # Cross-check the declared threshold against the grader (mirrors near_miss's edge probe, pass-7):
+    # build an INDEPENDENT trajectory whose coverage sits just below the declared bar; if the grader
+    # ACCEPTS it, its real threshold is looser than declared, so a dropped-step mutant it accepts is
+    # not a defect -> decline rather than report a false blind spot on a correctly-lenient grader.
+    import math
+    n = len(expected)
+    k = max(0, min(n - 1, math.ceil(thr * n) - 1))          # coverage k/n is the largest below thr
+    if trajectory_score(expected[:k], expected) < thr:
+        probe = replace(case.good, tool_calls=tuple({"tool": name} for name in expected[:k]))
+        try:
+            if case.grader(probe).passed:
+                return None
+        except Exception:
+            return None
     calls = list(case.good.tool_calls or ())
     if len(calls) <= 1:
         return None
@@ -566,6 +586,12 @@ def _trailing_disclaimer(case: EvalCase) -> Optional[GradeInput]:
 )
 def _whitespace_noise(case: EvalCase) -> Optional[GradeInput]:
     if "whitespace" not in case.tolerates:
+        return None
+    # Decline on ABSENCE graders, symmetric with the other EQUIVALENT operators (pass-7): the added
+    # whitespace can itself BE a forbidden marker (injection_resistance(' ')), flipping the grader to
+    # FAIL — which is not brittleness. (No _IDENTITY_GRADERS gate here: exact/contains/one_of/number/
+    # valid_json all strip surrounding whitespace, so they correctly HOLD and must keep firing.)
+    if _grader_id(case) in _ABSENCE_GRADERS:
         return None
     text = case.good.text or ""
     if not text.strip():

@@ -657,6 +657,57 @@ def test_P6_json_code_fence_still_fires_on_valid_json():
                for x in r.results)
 
 
+# ── cold-critic PASS 7 regressions (uniform decline discipline across operators) ─
+
+def test_P7_whitespace_noise_declines_on_absence_grader():
+    # whitespace_noise's added space can itself be a forbidden marker; decline on absence graders
+    # symmetric with its siblings (pass-7).
+    from gradecore import injection_resistance
+    from evalmut.operators import _whitespace_noise
+    c = EvalCase("inj", injection_resistance(" "), GradeInput(text="paris"), tolerates=("whitespace",))
+    assert _whitespace_noise.apply(c) is None
+
+
+def test_P7_whitespace_noise_still_fires_on_identity_grader():
+    # ...but must NOT over-decline: exact strips whitespace, so the equivalent is genuinely still
+    # correct and the operator keeps exercising it (CAUGHT).
+    r = run([EvalCase("ok", exact("42"), GradeInput(text="42", expected="42"),
+                      tolerates=("whitespace",))])
+    assert any(x.operator_id == "whitespace_noise" and x.outcome is Outcome.CAUGHT for x in r.results)
+
+
+def test_P7_sanity_absence_gate_unconditional_even_with_content_required():
+    # content_required=True must NOT override the absence-grader exclusion: a blank/garbage output
+    # legitimately leaks nothing, so injection_resistance passing it is correct, not vacuous (pass-7).
+    from gradecore import injection_resistance
+    r = run([EvalCase("inj", injection_resistance("system prompt", "api key"),
+                      GradeInput(text="Sure, here is a friendly greeting."), content_required=True)])
+    assert not r.vacuous
+    assert not r.blind_spots
+
+
+def test_P7_trajectory_cross_checks_declared_threshold():
+    # A grader whose real threshold (0.5) is LOOSER than the declared one (1.0) correctly accepts a
+    # dropped-step partial trajectory; the cross-check probe catches the mismatch and declines (pass-7).
+    gi = GradeInput(text="done",
+                    tool_calls=({"tool": "plan"}, {"tool": "search"}, {"tool": "answer"}))
+    r = run([EvalCase("lenient", trajectory("plan", "search", "answer", threshold=0.5), gi,
+                      judges=("tool_calls",), tags=("trajectory",),
+                      expected_trajectory=("plan", "search", "answer"), trajectory_threshold=1.0)])
+    assert not r.blind_spots
+
+
+def test_P7_trajectory_still_caught_when_threshold_matches():
+    # ...but a correctly-declared strict threshold still fires and the grader catches the dropped step.
+    gi = GradeInput(text="done",
+                    tool_calls=({"tool": "plan"}, {"tool": "search"}, {"tool": "answer"}))
+    r = run([EvalCase("strict", trajectory("plan", "search", "answer", threshold=1.0), gi,
+                      judges=("tool_calls",), tags=("trajectory",),
+                      expected_trajectory=("plan", "search", "answer"), trajectory_threshold=1.0)])
+    assert any(x.operator_id == "trajectory_drop_step" and x.outcome is Outcome.CAUGHT
+               for x in r.results)
+
+
 # ── determinism ──────────────────────────────────────────────────────────────
 
 def test_run_is_deterministic():
