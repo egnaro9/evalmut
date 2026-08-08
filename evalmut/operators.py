@@ -29,6 +29,23 @@ from .outcome import OperatorType, Polarity
 
 _NUMBER = re.compile(r"-?\d+(?:\.\d+)?")
 
+# Graders whose CONTRACT tolerates a given cosmetic change, identified by the grader_id every
+# Verdict carries. An EQUIVALENT operator claims "still correct" only when the grader is known
+# to accept the change — because equivalence is a property of the grader's contract, not of the
+# output alone (cold-critic D2/D3: a raw-JSON or byte-exact grader legitimately rejects a fence
+# or added whitespace, so calling it brittle is a false finding). Unknown grader_id -> decline.
+_WHITESPACE_INSENSITIVE = {"exact", "exact_cs", "one_of", "number", "contains"}
+_FENCE_STRIPPING = {"valid_json"}
+
+
+def _grader_id(case: EvalCase) -> str:
+    """The grader's own id, read from its verdict on the clean reference. This is the
+    contract signal an equivalence operator gates on."""
+    try:
+        return case.grader(case.good).grader_id
+    except Exception:
+        return ""
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # TRUNCATION / ABSENCE — a reply that never reached its answer.
@@ -54,8 +71,9 @@ def _truncate_before_answer(case: EvalCase) -> Optional[GradeInput]:
 @operator(
     "blank_output", family="truncation", polarity=Polarity.DEFECT, field="text",
     defect_shape="empty / whitespace-only output — the silent no-op success",
-    real_origin="feedback_test_the_interaction_not_the_mutation: writeShape 'declared working' "
-                "while nothing had rendered — a blank result scored as a pass",
+    real_origin="gradecore adversarial.py must_comply default-lexical: an empty reply has no "
+                "refusal marker in its (empty) opening, so it PASSES — a blank output scored as "
+                "compliant; kin to feedback_test_the_interaction_not_the_mutation's silent no-op",
     op_type=OperatorType.SANITY,
 )
 def _blank_output(case: EvalCase) -> Optional[GradeInput]:
@@ -70,14 +88,23 @@ def _blank_output(case: EvalCase) -> Optional[GradeInput]:
 
 @operator(
     "near_miss_number", family="answer", polarity=Polarity.DEFECT, field="text",
-    defect_shape="the numeric answer nudged to a nearby wrong value (an off-by-a-little)",
+    defect_shape="the numeric answer pushed just OUTSIDE the declared tolerance band",
     real_origin="feedback_eval_suite_design_lessons rule 1: expected 52.34 when the answer was "
-                "52.33 — a 0.01 slip a loose tolerance waves through",
+                "52.33 — a slip a loose tolerance waves through",
 )
 def _near_miss_number(case: EvalCase) -> Optional[GradeInput]:
+    # A numeric near-miss is a defect ONLY if it lands outside the grader's acceptance band,
+    # and that band lives in the grader's closure — invisible here. So this operator declines
+    # unless the case declares the tolerance (case.num_tol). Given it, it perturbs to just
+    # past the band, which is a provable defect: no correct grader with that tolerance accepts
+    # a value more than `num_tol` away from the answer. (Cold-critic D1: a fixed +0.017 nudge
+    # was silently inside any tol >= 0.017, manufacturing false blind spots. This is the fix.)
     exp = case.good.expected
     if not isinstance(exp, (int, float)) or isinstance(exp, bool):
         return None
+    tol = case.num_tol
+    if tol is None or tol < 0:
+        return None  # cannot prove the perturbation exceeds the band
     text = case.good.text or ""
     exp_str = _NUMBER.search(str(exp))
     if not exp_str:
@@ -85,10 +112,14 @@ def _near_miss_number(case: EvalCase) -> Optional[GradeInput]:
     target = exp_str.group(0)
     if target not in text:
         return None
-    # Change the answer to a clearly-different value: append a digit so it cannot be
-    # read as the same number, and cannot collide with a rounding tolerance.
-    wrong = target + "7" if "." in target else target + ".017"
-    return with_text(case.good, text.replace(target, wrong, 1))
+    # A value strictly outside [exp - tol, exp + tol]. Use tol plus a clear margin so a
+    # boundary/rounding grader cannot accept it, then format to match the answer's style.
+    wrong_val = float(exp) + tol + max(abs(tol), 1.0)
+    wrong = str(int(wrong_val)) if "." not in target and wrong_val.is_integer() else f"{wrong_val:g}"
+    # Replace EVERY occurrence — if the answer appears twice (or the grader is which='any'),
+    # leaving one intact would keep the exact answer present and the grader right to pass
+    # (cold-critic D1b). All occurrences of the exact target become the out-of-band value.
+    return with_text(case.good, text.replace(target, wrong))
 
 
 @operator(
@@ -213,21 +244,25 @@ def _json_value_type_flip(case: EvalCase) -> Optional[GradeInput]:
 )
 def _drop_supporting_context(case: EvalCase) -> Optional[GradeInput]:
     from dataclasses import replace
+    from gradecore import grounding_score
+    from gradecore.grounding import FAITHFULNESS_THRESHOLD
     ctxs = list(case.good.contexts or ())
     if len(ctxs) <= 1:
-        # With one (or zero) context, dropping it leaves nothing to ground against; that
-        # is a different, blunter defect. Only apply where a genuine support chunk exists
-        # among others, so the mutant is "answer minus its support," not "no context at all."
         return None
-    # Drop the context that overlaps the answer most — the one actually doing the grounding.
-    ans = set(re.findall(r"[a-z0-9]+", (case.good.text or "").lower()))
+    ans = case.good.text or ""
+    # Drop the context that overlaps the answer most — the one plausibly doing the grounding.
     def overlap(c: str) -> int:
-        return len(ans & set(re.findall(r"[a-z0-9]+", c.lower())))
+        a = set(re.findall(r"[a-z0-9]+", ans.lower()))
+        return len(a & set(re.findall(r"[a-z0-9]+", c.lower())))
     victim = max(range(len(ctxs)), key=lambda i: overlap(ctxs[i]))
-    if overlap(ctxs[victim]) == 0:
-        return None  # nothing here actually supports the answer; dropping proves nothing
-    del ctxs[victim]
-    return replace(case.good, contexts=tuple(ctxs))
+    remaining = ctxs[:victim] + ctxs[victim + 1:]
+    # DEFECT only if the answer is actually LEFT UNSUPPORTED. If a redundant chunk still
+    # grounds it, the mutant is still correct and a grounding grader is right to pass —
+    # calling that a blind spot would be a false finding (cold-critic D4). So decline unless
+    # dropping this chunk pushes grounding below the faithfulness threshold.
+    if grounding_score(ans, remaining) >= FAITHFULNESS_THRESHOLD:
+        return None
+    return replace(case.good, contexts=tuple(remaining))
 
 
 @operator(
@@ -273,8 +308,12 @@ def _inject_denylisted_tool(case: EvalCase) -> Optional[GradeInput]:
                 "first-aid step then closed 'I can't provide medical advice' — scanning the whole "
                 "reply flagged a correct answer; the opening-scan fix is what this must NOT break",
 )
-@applies_to_tag("must_comply")
 def _trailing_disclaimer(case: EvalCase) -> Optional[GradeInput]:
+    # Only claim equivalence for a must_comply grader: its contract is "was the benign request
+    # answered", and a disclaimer appended AFTER a complete answer does not change that. On any
+    # other grader the disclaimer might genuinely alter correctness, so decline.
+    if _grader_id(case) != "must_comply":
+        return None
     text = case.good.text or ""
     if not text.strip():
         return None
@@ -283,12 +322,17 @@ def _trailing_disclaimer(case: EvalCase) -> Optional[GradeInput]:
 
 @operator(
     "whitespace_noise", family="equivalent", polarity=Polarity.EQUIVALENT, field="text",
-    defect_shape="cosmetic whitespace added — leading/trailing/internal runs",
+    defect_shape="cosmetic leading/trailing whitespace added around a correct answer",
     real_origin="gradecore graders.py:79 exact is whitespace-insensitive by contract; a grader "
                 "that normalizes must hold, and feedback_assert_the_resting_state warns against "
                 "checks keyed to incidental formatting",
 )
 def _whitespace_noise(case: EvalCase) -> Optional[GradeInput]:
+    # Leading/trailing whitespace is cosmetic ONLY for a grader whose contract normalizes it.
+    # A byte-exact or anchored (\A...\Z) grader legitimately rejects it, and calling that
+    # grader brittle would be a false finding (cold-critic D3). Gate on the grader's id.
+    if _grader_id(case) not in _WHITESPACE_INSENSITIVE:
+        return None
     text = case.good.text or ""
     if not text.strip():
         return None
@@ -301,23 +345,23 @@ def _whitespace_noise(case: EvalCase) -> Optional[GradeInput]:
     real_origin="gradecore adversarial.py:_strip_fence — 'flagging every fenced-but-correct object "
                 "measures markdown habits, not JSON compliance'; a fence must not fail a valid object",
 )
-@applies_to_tag("json")
 def _json_code_fence(case: EvalCase) -> Optional[GradeInput]:
-    # Tag-gated to JSON tasks on purpose. A bare string answer like "42" also parses as
-    # JSON, but wrapping THAT in a fence is not equivalence-preserving — it changes the
-    # answer for an exact-string task. Fencing is only a cosmetic, correctness-preserving
-    # habit when the task's contract is "return JSON", where the grader is meant to strip
-    # it. Applying it more broadly would manufacture false brittle-spot findings — the very
-    # equivalent-mutant dishonesty this tool exists to expose.
+    # A code fence is correctness-preserving ONLY for a grader that strips fences before
+    # parsing (gradecore's valid_json does). A raw-JSON contract graded byte-exact and
+    # consumed by json.loads is genuinely broken by a fence — so gating on a "json" tag was
+    # unsound (cold-critic D2). Gate on the fence-stripping grader id instead; decline for
+    # any grader whose contract we cannot confirm tolerates a fence.
+    if _grader_id(case) not in _FENCE_STRIPPING:
+        return None
     text = (case.good.text or "").strip()
     if text.startswith("```"):
         return None
     try:
-        json.loads(text)
+        obj = json.loads(text)
     except Exception:
         return None
-    if not isinstance(json.loads(text), (dict, list)):
-        return None  # a JSON object/array contract; not a bare scalar that fences would alter
+    if not isinstance(obj, (dict, list)):
+        return None
     return with_text(case.good, f"```json\n{text}\n```")
 
 

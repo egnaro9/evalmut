@@ -66,18 +66,23 @@ class Outcome(str, Enum):
     CAUGHT = "caught"    # grader behaved correctly (rejected a defect / accepted an equivalent)
     MISSED = "missed"    # DEFECT survived: grader passed a genuinely-wrong output  -> BLIND SPOT
     FLAGGED = "flagged"  # EQUIVALENT broke: grader failed a still-correct output   -> BRITTLE SPOT
+    ERROR = "error"      # grader raised on a well-formed mutant -> it cannot render a verdict at all
     NA = "na"            # operator could not apply here (no correctness boundary it could cross)
 
     @property
     def is_hole(self) -> bool:
-        """A hole is any way the eval got the answer wrong: a miss or a false flag."""
-        return self in (Outcome.MISSED, Outcome.FLAGGED)
+        """A hole is any way the eval got the answer wrong: a miss, a false flag, or a
+        crash. A grader that raises on a valid mutant is broken in its own way — it cannot
+        even produce a verdict — so it counts as a hole, reported apart from the others."""
+        return self in (Outcome.MISSED, Outcome.FLAGGED, Outcome.ERROR)
 
     @property
     def counts_toward_score(self) -> bool:
-        """NA is excluded from the mutation score — an inapplicable mutant is not a
-        verdict about the eval, just a case the operator had nothing to say about."""
-        return self is not Outcome.NA
+        """NA and ERROR are excluded from the mutation score. NA is inapplicable; ERROR is
+        an undetermined verdict (the grader crashed, so it neither caught nor missed) —
+        counting a crash as a catch would let a fragile grader inflate its score, which is
+        exactly the conflation the SANITY probes exist to expose."""
+        return self not in (Outcome.NA, Outcome.ERROR)
 
 
 def outcome_for(polarity: Polarity, grader_passed: bool) -> Outcome:

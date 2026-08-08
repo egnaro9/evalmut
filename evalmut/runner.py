@@ -55,7 +55,16 @@ def run_case(case: EvalCase, operators: Sequence[MutationOperator]) -> list[Muta
     """Apply every operator to one case. Raises BaselineError if the case's baseline
     is not green — a caller that wants to tolerate that should use `run_suite`, which
     collects baseline failures instead of raising."""
-    baseline = case.baseline()
+    try:
+        baseline = case.baseline()
+    except Exception as exc:
+        # A grader that raises on its own clean reference is mis-specified in the worst
+        # way — it cannot render a verdict at all. Report it by name; do not let it abort
+        # the whole run (run_suite collects this, same as a red baseline).
+        raise BaselineError(
+            f"case {case.name!r}: grader raised on its own reference output "
+            f"({type(exc).__name__}: {exc}). Fix the grader before mutating."
+        )
     if not baseline.passed:
         raise BaselineError(
             f"case {case.name!r}: grader {baseline.grader_id!r} fails its own reference "
@@ -79,16 +88,18 @@ def run_case(case: EvalCase, operators: Sequence[MutationOperator]) -> list[Muta
         grader_error: Optional[str] = None
         try:
             v: Verdict = case.grader(mutant)
-            passed = bool(v.passed)
+            outcome = outcome_for(op.polarity, bool(v.passed))
             detail = v.detail
-        except Exception as exc:  # a grader that crashes on a well-formed variant
-            # counts as not-passing: for a DEFECT that is a (crude) catch, for an
-            # EQUIVALENT it is brittleness. Either way, surface the crash.
-            passed = False
+        except Exception as exc:
+            # A grader that crashes on a well-formed mutant did not "catch" anything — it
+            # failed to produce a verdict. Scoring a crash as a catch would hide a fragile
+            # grader (e.g. a rubber-stamp that indexes text[0] and dies on the blank-output
+            # probe, then reads as CAUGHT and vanishes from the vacuous report). ERROR is
+            # its own outcome, surfaced, excluded from the score.
+            outcome = Outcome.ERROR
             detail = f"grader raised: {type(exc).__name__}: {exc}"
             grader_error = f"{type(exc).__name__}: {exc}"
 
-        outcome = outcome_for(op.polarity, passed)
         results.append(_result(case, grader_id, op, outcome, detail,
                                mutant_preview=_mutated_field_preview(op, mutant),
                                grader_error=grader_error))

@@ -82,7 +82,8 @@ def _defect_case_for(op):
     by_id = {
         "truncate_before_answer": EvalCase("t", contains("42"), g(text="the total is 42", expected="42")),
         "blank_output": EvalCase("b", contains("answer"), g(text="the answer is here")),
-        "near_miss_number": EvalCase("n", number(42), g(text="the total is 42", expected=42)),
+        "near_miss_number": EvalCase("n", number(42, tol=0.1),
+                                     g(text="the total is 42", expected=42), num_tol=0.1),
         "garbage_answer": EvalCase("g", contains("42"), g(text="the total is 42")),
         "keyword_present_but_negated": EvalCase("k", contains("deploy"),
                                                 g(text="I ran deploy successfully", expected="deploy"),
@@ -184,11 +185,23 @@ def test_equivalent_held_on_requires_comply():
 
 
 def test_brittle_grader_flagged():
-    # raw equality (no normalization) is brittle: whitespace should not change correctness.
-    suite = [EvalCase("raw", bool_grader(lambda t: t == "42", "raw_eq"),
-                      GradeInput(text="42", expected="42"))]
+    # A grader that advertises a whitespace-insensitive contract (grader_id "exact") but is
+    # actually byte-exact is genuinely brittle — it rejects a correct answer with cosmetic
+    # whitespace. evalmut can prove the mutant is still correct (the "exact" contract tolerates
+    # whitespace) and correctly flags the grader.
+    liar = bool_grader(lambda t: t == "42", "exact")   # claims 'exact', behaves byte-exact
+    suite = [EvalCase("liar", liar, GradeInput(text="42", expected="42"))]
     r = run(suite)
     assert any(h.operator_id == "whitespace_noise" for h in r.brittle_spots)
+
+
+def test_no_false_brittle_on_unknown_grader():
+    # An UNKNOWN grader_id whose whitespace-tolerance evalmut cannot confirm must NOT be called
+    # brittle — proving equivalence requires knowing the contract (cold-critic D3).
+    unknown = bool_grader(lambda t: t == "42", "my_custom_check")
+    suite = [EvalCase("u", unknown, GradeInput(text="42", expected="42"))]
+    r = run(suite)
+    assert not any(h.operator_id == "whitespace_noise" for h in r.brittle_spots)
 
 
 def test_robust_exact_not_brittle_on_whitespace():
@@ -198,6 +211,59 @@ def test_robust_exact_not_brittle_on_whitespace():
 
 
 # ── determinism ──────────────────────────────────────────────────────────────
+
+# ── cold-critic regressions (every confirmed dishonest finding, pinned) ──────
+
+def test_D1_near_miss_declines_without_declared_tolerance():
+    # A numeric near-miss is grader-tolerance-dependent; without a declared tolerance the
+    # operator cannot prove DEFECT and must not manufacture a blind spot.
+    r = run([EvalCase("t", number(42, tol=0.1), GradeInput(text="42", expected=42))])
+    assert not r.blind_spots
+
+
+def test_D1_near_miss_with_tolerance_is_caught_not_blind():
+    r = run([EvalCase("t", number(42, tol=0.1),
+                      GradeInput(text="the total is 42", expected=42), num_tol=0.1)])
+    assert not r.blind_spots  # perturbs outside the band -> the grader catches it
+
+
+def test_D2_json_fence_declines_on_raw_json_grader():
+    r = run([EvalCase("raw", exact_cs('{"status": "ok"}'),
+                      GradeInput(text='{"status": "ok"}'), tags=("json",))])
+    assert not any(h.operator_id == "json_code_fence" for h in r.brittle_spots)
+
+
+def test_D3_whitespace_declines_on_anchored_regex():
+    from gradecore import regex
+    r = run([EvalCase("a", regex(r"\A\{\"a\": 1\}\Z"), GradeInput(text='{"a": 1}'))])
+    assert not any(h.operator_id == "whitespace_noise" for h in r.brittle_spots)
+
+
+def test_D4_drop_context_declines_when_redundant_support_remains():
+    from gradecore import grounding
+    gi = GradeInput(text="paris is the capital",
+                    contexts=("paris is the capital of france",
+                              "paris is the capital and largest city"))
+    r = run([EvalCase("g", grounding(), gi, judges=("text", "contexts"))])
+    assert not any(h.operator_id == "drop_supporting_context" for h in r.blind_spots)
+
+
+def test_I1_grader_crash_is_error_not_caught():
+    # A grader that indexes text[0] crashes on the blank-output probe. That must surface as
+    # ERROR, not be scored CAUGHT and hidden.
+    r = run([EvalCase("c", bool_grader(lambda t: t[0] == "x" or True, "fragile"),
+                      GradeInput(text="xyz", expected="xyz"))])
+    assert r.errors
+    assert not any(x.outcome is Outcome.CAUGHT and x.grader_error for x in r.results)
+
+
+def test_Q1_grader_crash_on_baseline_is_collected_not_raised():
+    good = EvalCase("ok", exact("42"), GradeInput(text="42", expected="42"))
+    boom = EvalCase("boom", bool_grader(lambda t: 1 / 0, "div0"), GradeInput(text="42"))
+    r = run([good, boom])           # must not raise
+    assert r.baseline_failures      # the crashing case is reported by name
+    assert any(x.case_name == "ok" for x in r.results)  # the good case still ran
+
 
 def test_run_is_deterministic():
     suite = [

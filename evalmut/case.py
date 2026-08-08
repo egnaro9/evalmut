@@ -31,6 +31,12 @@ class EvalCase:
     # overwhelming majority (scalar/text/safety graders); a tool or retrieval case names
     # its own fields so text operators don't fire on it and manufacture false findings.
     judges: tuple[str, ...] = ("text",)
+    # The numeric acceptance band the grader uses, if this is a numeric-answer task. A
+    # near-miss is a defect only if it falls OUTSIDE the tolerance — and that band lives in
+    # the grader's closure, invisible to an operator. Declaring it here lets the numeric
+    # operator perturb to just past the band (a provable defect) instead of guessing a delta
+    # that a tolerant grader is right to accept. Left None, the numeric operator declines.
+    num_tol: float | None = None
     # Optional human-readable notes surfaced in reports; never load-bearing.
     intent: str = ""
     tags: tuple[str, ...] = field(default_factory=tuple)
@@ -42,7 +48,7 @@ class EvalCase:
 
 
 def case(name: str, grader: Grader, good: GradeInput, *, judges: tuple[str, ...] = ("text",),
-         intent: str = "", tags: tuple[str, ...] = ()) -> EvalCase:
+         num_tol: float | None = None, intent: str = "", tags: tuple[str, ...] = ()) -> EvalCase:
     """Terse constructor for suites written as data."""
     return EvalCase(name=name, grader=grader, good=good, judges=judges,
-                    intent=intent, tags=tags)
+                    num_tol=num_tol, intent=intent, tags=tags)

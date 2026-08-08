@@ -57,6 +57,7 @@ def _cmd_run(args) -> int:
             "holes": {
                 "vacuous": [_result_dict(h) for h in report.vacuous],
                 "blind": [_result_dict(h) for h in report.blind_spots],
+                "error": [_result_dict(h) for h in report.errors],
                 "brittle": [_result_dict(h) for h in report.brittle_spots],
                 "coverage_gap": [_result_dict(h) for h in report.coverage_gaps],
             },
@@ -70,8 +71,9 @@ def _cmd_run(args) -> int:
         print(render(report, verbose=args.verbose))
 
     # CI gate: coverage-gaps alone do not fail (they name missing graders, not broken
-    # ones); vacuous / blind / brittle do.
-    serious = report.vacuous or report.blind_spots or report.brittle_spots
+    # ones); vacuous / blind / error / brittle do.
+    serious = (report.vacuous or report.blind_spots or report.errors
+               or report.brittle_spots)
     return 1 if (serious or getattr(report, "baseline_failures", ())) else 0
 
 

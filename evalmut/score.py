@@ -28,15 +28,17 @@ class Tally:
     caught: int = 0
     missed: int = 0
     flagged: int = 0
+    error: int = 0
     na: int = 0
 
     @property
     def applied(self) -> int:
+        # Excludes NA (inapplicable) and ERROR (undetermined — the grader crashed).
         return self.caught + self.missed + self.flagged
 
     @property
     def holes(self) -> int:
-        return self.missed + self.flagged
+        return self.missed + self.flagged + self.error
 
     @property
     def score(self) -> float:
@@ -49,6 +51,7 @@ class Tally:
             caught=self.caught + (outcome is Outcome.CAUGHT),
             missed=self.missed + (outcome is Outcome.MISSED),
             flagged=self.flagged + (outcome is Outcome.FLAGGED),
+            error=self.error + (outcome is Outcome.ERROR),
             na=self.na + (outcome is Outcome.NA),
         )
 
@@ -95,6 +98,11 @@ class Report:
         return [h for h in self.holes if h.outcome is Outcome.FLAGGED]
 
     @property
+    def errors(self) -> list[MutationResult]:
+        """The grader raised on a well-formed mutant — it cannot render a verdict at all."""
+        return [h for h in self.holes if h.outcome is Outcome.ERROR]
+
+    @property
     def clean(self) -> bool:
         return not self.holes
 
@@ -121,9 +129,11 @@ def score(results: Sequence[MutationResult]) -> Report:
             return 0
         if r.outcome is Outcome.MISSED and r.op_type is OperatorType.KILL:
             return 1
-        if r.outcome is Outcome.FLAGGED:
+        if r.outcome is Outcome.ERROR:
             return 2
-        return 3  # MISSED + DIAGNOSTIC
+        if r.outcome is Outcome.FLAGGED:
+            return 3
+        return 4  # MISSED + DIAGNOSTIC
     holes = sorted(
         (r for r in results if r.outcome.is_hole),
         key=lambda r: (rank(r), r.grader_id, r.operator_id),
