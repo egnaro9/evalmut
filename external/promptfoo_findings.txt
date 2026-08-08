@@ -1,0 +1,32 @@
+────────────────────────────────────────────────────────────────────────
+  evalmut — does your eval actually check anything?
+────────────────────────────────────────────────────────────────────────
+  mutation score    50.0%   (5 caught / 10 applied; 68 n/a)
+  holes            5  (2 vacuous, 2 blind, 1 coverage-gap)
+
+  VACUOUS — the grader asserts nothing about the answer and cannot fail
+    • pf_word_count / concise_wordcount
+        mutation : blank_output — empty / whitespace-only output — the silent no-op success
+        grader   : passed the mutant  (word-count 0 in [0,50])
+        mined from: gradecore adversarial.py must_comply default-lexical: an empty reply has no refusal marker in its (empty) opening, so it PASSES — a blank output scored as compliant; kin to feedback_test_the_interaction_not_the_mutation's silent no-op
+    • pf_word_count / concise_wordcount
+        mutation : garbage_answer — output replaced with unrelated text — a check that asserts nothing lets it pass
+        grader   : passed the mutant  (word-count 5 in [0,50])
+        mined from: BoardEngineExampleTest.java:330 assertTrue("result is a boolean", result || !result) — a tautology any output satisfies
+
+  BLIND SPOTS — a real defect shipped green; the check is present and broken
+    • pf_contains / approval_contains
+        mutation : keyword_present_but_negated — the checked keyword appears, but in a context that means the opposite
+        grader   : passed the mutant  (contains 'approved' (case-sensitive))
+        mined from: val-gate.sh:14 — a proof gate that greps the transcript for 'val_lite'; the block message contains 'val_lite', so mentioning it passes without running it
+    • pf_icontains / error_icontains
+        mutation : keyword_present_but_negated — the checked keyword appears, but in a context that means the opposite
+        grader   : passed the mutant  (icontains 'error')
+        mined from: val-gate.sh:14 — a proof gate that greps the transcript for 'val_lite'; the block message contains 'val_lite', so mentioning it passes without running it
+
+  COVERAGE GAPS — no check guards this shape (a missing grader, not a broken one)
+    • valid_json / api_isjson
+        mutation : json_value_type_flip — a required JSON field's value coerced to the wrong type (number -> string)
+        grader   : passed the mutant  (valid JSON)
+        mined from: gradecore adversarial.py:149 valid_json checks key PRESENCE only, never value type — a documented scoping a type-flipped contract violation slips through
+────────────────────────────────────────────────────────────────────────
