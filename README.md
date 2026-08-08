@@ -82,13 +82,18 @@ operator does **not** guess it from a module default or trust a label the grader
 about itself (a composite grader can honestly carry a primitive's id yet enforce more).
 The suite *declares* that bar on the case (`num_tol`, `expected_trajectory`, `tolerates`,
 `content_required`), and the operator uses it — cross-checking it against the grader where
-it can — or declines. This is the discipline four rounds of adversarial cold-critique paid
-for: every false hole those passes found was an operator asserting polarity without
+it can — or declines. This is the discipline **eight rounds of adversarial cold-critique**
+paid for: every false hole those passes found was an operator asserting polarity without
 recomputing the graded property against the grader's *real* acceptance condition — a
 hardcoded threshold, a self-reported id, a fixed-magnitude mutant that tripped an
 orthogonal constraint, a formatting quirk that defeated a cross-check, a text
-transformation the grader's own tokenizer re-read differently. The regression tests
-(`test_D1`–`D4`, `test_P2A`–`P2K`, `test_P3F1`–`F8`, `test_P4_*`) pin each one.
+transformation the grader's own tokenizer re-read differently, a decline-gate one operator
+carried and its siblings didn't. The confirmed-false-positive count per round fell
+**4 → 12 → 6 → 7 → 2 → 0 → 0 → 0** and the last two passes found nothing to fix; the
+regression tests (`test_D1`–`D4`, `test_P2A`–`P2K`, `test_P3F1`–`F8`, `test_P4_*`,
+`test_P5_*`, `test_P6_*`, `test_P7_*`) pin every one. The through-line is a single invariant:
+**an operator asserts a hole only where it can recompute the graded property against the
+grader's real acceptance condition; everywhere else it declines.**
 
 ## Mined, not authored
 
