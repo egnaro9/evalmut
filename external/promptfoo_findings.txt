@@ -1,8 +1,8 @@
 ────────────────────────────────────────────────────────────────────────
   evalmut — does your eval actually check anything?
 ────────────────────────────────────────────────────────────────────────
-  mutation score    50.0%   (5 caught / 10 applied; 68 n/a)
-  holes            5  (2 vacuous, 2 blind, 1 coverage-gap)
+  mutation score    45.5%   (5 caught / 11 applied; 79 n/a)
+  holes            6  (2 vacuous, 2 blind, 2 coverage-gap)
 
   VACUOUS — the grader asserts nothing about the answer and cannot fail
     • pf_word_count / concise_wordcount
@@ -25,7 +25,11 @@
         mined from: val-gate.sh:14 — a proof gate that greps the transcript for 'val_lite'; the block message contains 'val_lite', so mentioning it passes without running it
 
   COVERAGE GAPS — no check guards this shape (a missing grader, not a broken one)
-    • valid_json / api_isjson
+    • pf_is_json / api_isjson
+        mutation : json_value_corruption — a required JSON field's value changed to a DIFFERENT value of the same type
+        grader   : passed the mutant  (valid JSON)
+        mined from: gradecore adversarial.py:149 valid_json checks key PRESENCE only — a keys/`required`-only schema is blind not just to value TYPE (json_value_type_flip) but to a WRONG VALUE of the right type; the canonical case is an API decision field {"approved": true}
+    • pf_is_json / api_isjson
         mutation : json_value_type_flip — a required JSON field's value coerced to the wrong type (number -> string)
         grader   : passed the mutant  (valid JSON)
         mined from: gradecore adversarial.py:149 valid_json checks key PRESENCE only, never value type — a documented scoping a type-flipped contract violation slips through

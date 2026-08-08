@@ -11,8 +11,8 @@ grader are noted in-file so nothing here is an artifact of our own code.
 
 ```
 $ cd ~/evalmut && PYTHONPATH=.:external python3 -m evalmut.cli run external/promptfoo_suite.py
-  mutation score    50.0%   (5 caught / 10 applied; 68 n/a)
-  holes            5  (2 vacuous, 2 blind, 1 coverage-gap)
+  mutation score    45.5%   (5 caught / 11 applied; 71 n/a)
+  holes            6  (2 vacuous, 2 blind, 2 coverage-gap)
 ```
 
 Six checks a promptfoo user would plausibly write. evalmut found three classes of hole in the weak
@@ -44,7 +44,7 @@ blind spot.
 Who inherits it: anyone using `contains`/`icontains` as a **correctness** gate for a yes/no or
 polarity question. It is safe for pure presence ("does the JSON mention a `total` field?").
 
-## Finding 2 — schema-less / keys-only `is-json` is blind to value-type violations  *(coverage gap)*
+## Finding 2 — schema-less / keys-only `is-json` is blind to wrong values (type *and* value)  *(2 coverage gaps)*
 
 Validating an API response with:
 
@@ -54,15 +54,17 @@ assert:
     value: { required: [status, count] }   # keys, no property types
 ```
 
-evalmut's `json_value_type_flip` coerces the numeric `count` to a string:
-`{"status": "ok", "count": "__3__"}`. It still parses and still has both keys, so the assertion
-**passes a response with a required numeric field returned as a string.**
+Two mutations survive it. `json_value_type_flip` coerces `count` to a string
+(`{"status": "ok", "count": "__3__"}`); `json_value_corruption` changes it to a different value of the
+same type (`{"status": "ok", "count": 4}`). Both still parse and still have both keys, so the assertion
+**passes a response with a required field's value wrong — whether the type is wrong or just the value.**
+The visceral case is a decision field: `{"approved": true}` → `{"approved": false}` sails through.
 
-Verified: `is-json` passes the type-flipped object **but rejects** a missing key and non-JSON — so the
-gap is precisely value **type**, nothing else. This is classed a *coverage gap*, not a broken check:
-`is-json` never promised to check types. The point is that a `required`-only schema (a very common
-shortcut) does not, and only a schema with typed `properties` closes it. A **bare** `is-json` (no
-schema) is weaker still — it asserts only that the output parses.
+Verified: `is-json` passes both mutations **but rejects** a missing key and non-JSON — so the gap is
+precisely the value (type and content), nothing else. Both are *coverage gaps*, not broken checks:
+`is-json` never promised to check values. A `required`-only schema (a very common shortcut) does not;
+only a schema with typed, valued `properties` closes it. A **bare** `is-json` (no schema) is weaker
+still — it asserts only that the output parses.
 
 ## Finding 3 — `word-count` used as a correctness gate is vacuous  *(vacuous)*
 

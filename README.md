@@ -26,8 +26,8 @@ $ evalmut run demos/dogfood_gradecore.py
 ────────────────────────────────────────────────────────────────────────
   evalmut — does your eval actually check anything?
 ────────────────────────────────────────────────────────────────────────
-  mutation score    94.1%   (32 caught / 34 applied; 127 n/a)
-  holes            2  (1 blind, 1 coverage-gap)
+  mutation score    91.4%   (32 caught / 35 applied; 150 n/a)
+  holes            3  (1 blind, 2 coverage-gap)
 
   BLIND SPOTS — a real defect shipped green; the check is present and broken
     • contains / contains
@@ -39,15 +39,18 @@ $ evalmut run demos/dogfood_gradecore.py
     • valid_json / valid_json
         mutation : json_value_type_flip — a required field's value coerced to
                    the wrong type (number -> string)
-        mined from: gradecore valid_json checks key PRESENCE only, never value type
+    • valid_json / valid_json
+        mutation : json_value_corruption — a required field's value changed to a
+                   different value of the same type (3 -> 4)
+        mined from: gradecore valid_json checks key PRESENCE only, never value
 ```
 
-That run is `evalmut` pointed at **its own dependency's** graders. It found two real
+That run is `evalmut` pointed at **its own dependency's** graders. It found three real
 holes and — this is the point — it was **fair about them**: it called the `contains`
-weakness a *blind spot* (a present check that's broken) and the `valid_json` scoping a
-*coverage gap* (a missing check, not a broken one), because `valid_json` never claimed
-to validate types. A tool that cries "broken!" at a correctly-scoped check is a tool
-you learn to ignore.
+weakness a *blind spot* (a present check that's broken) and the two `valid_json` scopings
+*coverage gaps* (a missing check, not a broken one), because `valid_json` only ever
+claimed to check key presence. A tool that cries "broken!" at a correctly-scoped check
+is a tool you learn to ignore.
 
 ## The two ways an eval lies
 

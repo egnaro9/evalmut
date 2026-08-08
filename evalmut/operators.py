@@ -423,6 +423,51 @@ def _json_value_type_flip(case: EvalCase) -> Optional[GradeInput]:
     return None
 
 
+def _corrupt_same_type(v):
+    """A DIFFERENT value of the SAME type as `v` — provably not the reference's (correct) value, so a
+    genuine defect, while keeping the JSON shape a keys-only validator checks. Returns None for
+    containers/null (no unambiguous same-type corruption)."""
+    if isinstance(v, bool):
+        return not v
+    if isinstance(v, (int, float)):
+        return v + 1 if v != 1 else 2
+    if isinstance(v, str):
+        return v + "_x" if v else "x"
+    return None
+
+
+@operator(
+    "json_value_corruption", family="json", polarity=Polarity.DEFECT, field="text",
+    defect_shape="a required JSON field's value changed to a DIFFERENT value of the same type",
+    real_origin="gradecore adversarial.py:149 valid_json checks key PRESENCE only — a keys/`required`"
+                "-only schema is blind not just to value TYPE (json_value_type_flip) but to a WRONG "
+                "VALUE of the right type; the canonical case is an API decision field {\"approved\": true}",
+    op_type=OperatorType.DIAGNOSTIC,
+)
+def _json_value_corruption(case: EvalCase) -> Optional[GradeInput]:
+    # Same gate as json_value_type_flip: only a JSON-STRUCTURE grader (valid_json family). The mutated
+    # value differs from the reference's correct value, so it is genuinely wrong; a keys-only validator
+    # passes it (never checks values) -> a coverage gap, not a broken check. A typed-`properties` schema
+    # or a value assertion would catch it. Sibling of the type-flip: type-flip catches "blind to type",
+    # this catches "blind to a wrong value of the right type".
+    if _family(case) != "valid_json":
+        return None
+    text = (case.good.text or "").strip()
+    fenced = re.sub(r"^```(?:json)?\s*|\s*```$", "", text, flags=re.S).strip()
+    try:
+        obj = json.loads(fenced)
+    except Exception:
+        return None
+    if not isinstance(obj, dict) or not obj:
+        return None
+    for k, v in obj.items():
+        nv = _corrupt_same_type(v)
+        if nv is not None and nv != v:
+            obj[k] = nv
+            return with_text(case.good, json.dumps(obj))
+    return None
+
+
 @operator(
     "drop_supporting_context", family="grounding", polarity=Polarity.DEFECT, field="contexts",
     defect_shape="the retrieved chunk that supports the answer is gone — answer now unsupported",
@@ -638,6 +683,30 @@ def _json_code_fence(case: EvalCase) -> Optional[GradeInput]:
     return _equivalent_or_decline(case, minimal, full)
 
 
+@operator(
+    "case_variant", family="equivalent", polarity=Polarity.EQUIVALENT, field="text",
+    defect_shape="the correct answer with its letter casing changed (cosmetic for a case-insensitive task)",
+    real_origin="gradecore graders.py exact()/contains() lowercase both sides (case-insensitive by "
+                "contract), while promptfoo `contains` is case-SENSITIVE (external/FINDINGS.md) — a task "
+                "that treats casing as cosmetic is brittle if graded case-sensitively",
+)
+def _case_variant(case: EvalCase) -> Optional[GradeInput]:
+    # Fires only when the task DECLARES casing cosmetic (tolerates 'case'). swapcase changes every
+    # letter's case but PRESERVES LENGTH and every non-letter, so there is no orthogonal length/format
+    # dimension to trip: any rejection is attributable to case-sensitivity, which is exactly the
+    # brittleness a case-cosmetic task is asserting the grader must not have. Declines on ABSENCE
+    # graders (symmetric with the other EQUIVALENT operators) since a case change is not a cosmetic
+    # still-correctness we can assert for a forbidden-marker check.
+    if "case" not in case.tolerates:
+        return None
+    if _family(case) in _ABSENCE_GRADERS:
+        return None
+    text = case.good.text or ""
+    if not text.strip() or text.swapcase() == text:  # no letters to flip
+        return None
+    return with_text(case.good, text.swapcase())
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # The assembled catalog.
 # ─────────────────────────────────────────────────────────────────────────────
@@ -653,12 +722,14 @@ CORE_OPERATORS: tuple[MutationOperator, ...] = (
     _fabricate_over_abstain,
     _leak_injection,
     _json_value_type_flip,
+    _json_value_corruption,
     _drop_supporting_context,
     _trajectory_drop_step,
     _inject_denylisted_tool,
     _trailing_disclaimer,
     _whitespace_noise,
     _json_code_fence,
+    _case_variant,
 )
 
 

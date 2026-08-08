@@ -125,7 +125,7 @@ graded property against the grader's real acceptance condition* — a hardcoded 
 a fixed-magnitude mutant that tripped an orthogonal length constraint, a `%g`-formatted probe the
 grader's own tokenizer re-read as a different number, a decline-gate one operator carried and its
 siblings did not. Rounds 6–8 found no false positive on a well-formed suite; the residual work was
-making the recompute-or-decline discipline *uniform* across all sixteen operators. Two proposed fixes
+making the recompute-or-decline discipline *uniform* across all eighteen operators. Two proposed fixes
 during review were **rejected as circular** — "run the grader on the mutant and decline if it accepts"
 would erase every real blind spot — a hazard the two-independent-representatives rule exists to avoid.
 
@@ -148,10 +148,11 @@ loop (each finding independently re-verified against promptfoo's semantics):
   check with `contains: approved` passes *"I did NOT do approved; the step approved was skipped."* —
   a substring check cannot see polarity. Verified specifically blind: it rejects a genuinely
   keyword-absent reply, so it is not merely vacuous.
-- **Schema-less / keys-only `is-json` is blind to value-type violations.** A required numeric field
-  returned as a string still parses and still has its key, so the assertion passes it. This is a
-  coverage gap, not a broken check — only a schema with typed `properties` closes it, and a
-  `required`-only schema (a common shortcut) does not.
+- **Schema-less / keys-only `is-json` is blind to wrong values (type *and* value).** A required field
+  returned with the wrong type (`3` → `"3"`) or a wrong value of the right type (`{"approved": true}`
+  → `false`) still parses and still has its key, so the assertion passes it. Two coverage gaps, not
+  broken checks — only a schema with typed, valued `properties` closes them, and a `required`-only
+  schema (a common shortcut) does not.
 - **`word-count` used as a correctness gate is vacuous.** It passes a blank output and gibberish
   alike; it asserts only length, nothing about the answer.
 - **Contrast (the fair half):** a `regex: "was approved"` on the same task *caught* the negation, and
@@ -186,7 +187,7 @@ outcomes with a model; our whole point is to avoid that at the measurement layer
 
 ## 8. Reproducibility and status
 
-The engine, the sixteen mined operators, the regression suite pinning every reviewed false positive,
+The engine, the eighteen mined operators, the regression suite pinning every reviewed false positive,
 the dogfood against its own dependency's graders, and the promptfoo experiment are in this repository
 and run deterministically with no network and no model. This is a working draft: the per-round counts
 in §4, the operator count, and the promptfoo findings should be re-confirmed against the commit log,

@@ -107,6 +107,7 @@ def _defect_case_for(op):
                                    g(text="Translation done.", expected="SECRET_KEY"),
                                    tags=("injection",)),
         "json_value_type_flip": EvalCase("j", valid_json("count"), g(text='{"count": 3}'), tags=("json",)),
+        "json_value_corruption": EvalCase("jc", valid_json("count"), g(text='{"count": 3}'), tags=("json",)),
         "drop_supporting_context": EvalCase("d", grounding(),
                                             g(text="alpha beta gamma",
                                               contexts=("alpha beta gamma", "zzz yyy")),
@@ -151,6 +152,8 @@ def test_equivalent_operator_preserves_a_normalizing_grader(op):
         "json_code_fence": EvalCase("jf", valid_json("count"),
                                     GradeInput(text='{"count": 3}'), tags=("json",),
                                     tolerates=("fence",)),
+        "case_variant": EvalCase("cv", exact("yes"), GradeInput(text="yes", expected="yes"),
+                                 tolerates=("case",)),
     }
     case = fixtures.get(op.id)
     if case is None:
@@ -727,6 +730,44 @@ def test_family_hook_fires_family_gated_operator_on_external_grader():
                    for h in (undeclared.coverage_gaps + undeclared.blind_spots))
     declared = run([EvalCase("d", ext_json, gi, tags=("json",), grader_family="valid_json")])
     assert any(h.operator_id == "json_value_type_flip" for h in declared.coverage_gaps)
+
+
+def test_case_variant_flags_case_sensitive_grader():
+    # A task that declares casing cosmetic, graded case-SENSITIVELY (exact_cs), is brittle to a case
+    # variant of a correct answer — evalmut flags it (mined from promptfoo's case-sensitive contains).
+    r = run([EvalCase("cs", exact_cs("Yes"), GradeInput(text="Yes", expected="Yes"),
+                      tolerates=("case",))])
+    assert any(h.operator_id == "case_variant" for h in r.brittle_spots)
+
+
+def test_case_variant_held_on_case_insensitive_grader():
+    # ...and a case-INSENSITIVE grader (exact lowercases) correctly holds — CAUGHT, not flagged.
+    r = run([EvalCase("ci", exact("yes"), GradeInput(text="yes", expected="yes"),
+                      tolerates=("case",))])
+    assert not any(h.operator_id == "case_variant" for h in r.brittle_spots)
+    assert any(x.operator_id == "case_variant" and x.outcome is Outcome.CAUGHT for x in r.results)
+
+
+def test_case_variant_declines_without_declaration():
+    r = run([EvalCase("nd", exact_cs("Yes"), GradeInput(text="Yes", expected="Yes"))])  # no tolerates
+    assert not any(h.operator_id == "case_variant" for h in r.brittle_spots)
+
+
+def test_json_value_corruption_is_coverage_gap_not_blind():
+    # A keys-only JSON validator is blind to a WRONG VALUE of the right type — a coverage gap
+    # (DIAGNOSTIC), never a blind spot.
+    r = run([EvalCase("jc", valid_json("count"), GradeInput(text='{"count": 3}'), tags=("json",))])
+    assert any(h.operator_id == "json_value_corruption" for h in r.coverage_gaps)
+    assert not any(h.operator_id == "json_value_corruption" for h in r.blind_spots)
+
+
+def test_json_value_corruption_declines_on_non_json_grader():
+    # Gated to the valid_json family: a contains() over JSON must not draw a json coverage gap.
+    r = run([EvalCase("t", contains("temperature"),
+                      GradeInput(text='{"temperature": 72}', expected="temperature"),
+                      tags=("presence_check",))])
+    assert not any(h.operator_id == "json_value_corruption"
+                   for h in (r.coverage_gaps + r.blind_spots))
 
 
 def test_family_hook_reported_id_stays_honest():

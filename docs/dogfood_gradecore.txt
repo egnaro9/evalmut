@@ -1,8 +1,8 @@
 ────────────────────────────────────────────────────────────────────────
   evalmut — does your eval actually check anything?
 ────────────────────────────────────────────────────────────────────────
-  mutation score    94.1%   (32 caught / 34 applied; 127 n/a)
-  holes            2  (1 blind, 1 coverage-gap)
+  mutation score    91.4%   (32 caught / 35 applied; 150 n/a)
+  holes            3  (1 blind, 2 coverage-gap)
 
   BLIND SPOTS — a real defect shipped green; the check is present and broken
     • contains / contains
@@ -11,6 +11,10 @@
         mined from: val-gate.sh:14 — a proof gate that greps the transcript for 'val_lite'; the block message contains 'val_lite', so mentioning it passes without running it
 
   COVERAGE GAPS — no check guards this shape (a missing grader, not a broken one)
+    • valid_json / valid_json
+        mutation : json_value_corruption — a required JSON field's value changed to a DIFFERENT value of the same type
+        grader   : passed the mutant  (ok)
+        mined from: gradecore adversarial.py:149 valid_json checks key PRESENCE only — a keys/`required`-only schema is blind not just to value TYPE (json_value_type_flip) but to a WRONG VALUE of the right type; the canonical case is an API decision field {"approved": true}
     • valid_json / valid_json
         mutation : json_value_type_flip — a required JSON field's value coerced to the wrong type (number -> string)
         grader   : passed the mutant  (ok)
