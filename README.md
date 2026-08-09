@@ -22,7 +22,7 @@ flipped boolean, it's a semantic perturbation whose ground truth you have to est
 That's the hard part, and it's what `evalmut` does.
 
 ```
-$ evalmut run demos/dogfood_gradecore.py
+$ evalmut run suite.py   # your suite; see 'Install & use' below
 ────────────────────────────────────────────────────────────────────────
   evalmut — does your eval actually check anything?
 ────────────────────────────────────────────────────────────────────────

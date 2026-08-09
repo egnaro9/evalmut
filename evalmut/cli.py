@@ -71,6 +71,16 @@ def _cmd_run(args) -> int:
     else:
         print(render(report, verbose=args.verbose))
 
+    # An empty suite (or one where no operator could apply) produced a 100%/no-holes report
+    # above — but nothing was actually mutated or checked, which is the exact lie this tool
+    # exists to catch. Fail the gate rather than green-light it.
+    if report.total.applied == 0:
+        if not args.json:
+            print("evalmut: no mutations applied — the suite is empty or no case has a "
+                  "mutable, gradeable field. Nothing was checked; this is not a pass.",
+                  file=sys.stderr)
+        return 1
+
     # CI gate: coverage-gaps alone do not fail (they name missing graders, not broken
     # ones); vacuous / blind / error / brittle do.
     serious = (report.vacuous or report.blind_spots or report.errors
@@ -111,6 +121,13 @@ def main(argv=None) -> int:
     o = sub.add_parser("operators", help="list the mined operator catalog")
     o.add_argument("--json", action="store_true")
     o.set_defaults(fn=_cmd_operators)
+
+    # The report uses box-drawing / warning glyphs; on a non-UTF-8 stdout (Windows cp1252,
+    # a redirected CI pipe) printing them would crash with UnicodeEncodeError and lose the
+    # whole report. Degrade unrepresentable glyphs to a placeholder instead of dying.
+    enc = (getattr(sys.stdout, "encoding", None) or "").lower()
+    if enc not in ("utf-8", "utf8") and hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="backslashreplace")
 
     args = ap.parse_args(argv)
     return args.fn(args)

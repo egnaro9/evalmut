@@ -9,13 +9,26 @@ description = "Mutation testing for evals: inject known defects into the system 
 requires-python = ">=3.11"
 readme = "README.md"
 license = { text = "MIT" }
-dependencies = ["gradecore>=0.1.0"]
+authors = [{ name = "Erik Hill", email = "erik.hill0987@gmail.com" }]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Topic :: Software Development :: Testing",
+  "Intended Audience :: Developers",
+]
+dependencies = ["gradecore>=0.10.0"]
+
+[project.urls]
+Repository = "https://github.com/egnaro9/evalmut"
 
 [project.scripts]
 evalmut = "evalmut.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["evalmut*"]
+
+[tool.setuptools.package-data]
+evalmut = ["py.typed"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
