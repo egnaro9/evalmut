@@ -7,10 +7,22 @@ shape)" is a thing to go fix, and "0.82" is not.
 """
 from __future__ import annotations
 
+import re
+
 from .outcome import Outcome
 from .score import Report, Tally
 
 _BAR = "─" * 72
+
+# Grader detail and mutant echoes are attacker-influenced text — they can carry a model's
+# output verbatim. Escape C0/C1 control chars (except \t and \n) at render time so a mutant
+# can't smuggle ANSI/terminal control sequences into a terminal or CI log. The tool's own
+# box-drawing glyphs live above U+009F and in non-untrusted literals, so they're untouched.
+_CTRL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]")
+
+
+def _safe(s: str) -> str:
+    return _CTRL.sub(lambda m: repr(m.group())[1:-1], s)
 
 
 def _pct(t: Tally) -> str:
@@ -46,7 +58,7 @@ def render(report: Report, *, verbose: bool = False) -> str:
         w("")
         w("  ⚠ BASELINE FAILURES — these cases were skipped (grader fails its own reference):")
         for be in report.baseline_failures:
-            w(f"      {be}")
+            w(f"      {_safe(str(be))}")
 
     _section(w, "VACUOUS — the grader asserts nothing about the answer and cannot fail",
              report.vacuous, verbose)
@@ -81,12 +93,12 @@ def _section(w, title: str, items, verbose: bool) -> None:
                  Outcome.ERROR: "crashed on"}.get(h.outcome, "handled")
         w(f"    • {h.grader_id} / {h.case_name}")
         w(f"        mutation : {h.operator_id} — {h.defect_shape}")
-        w(f"        grader   : {arrow} the mutant  ({h.detail})")
+        w(f"        grader   : {arrow} the mutant  ({_safe(h.detail)})")
         w(f"        mined from: {h.real_origin}")
         if verbose and h.mutant_preview:
-            w(f"        mutant   : {h.mutant_preview}")
+            w(f"        mutant   : {_safe(h.mutant_preview)}")
         if h.grader_error:
-            w(f"        note     : grader crashed — {h.grader_error}")
+            w(f"        note     : grader crashed — {_safe(h.grader_error)}")
 
 
 def render_short(report: Report) -> str:

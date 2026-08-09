@@ -11,7 +11,7 @@ grader are noted in-file so nothing here is an artifact of our own code.
 
 ```
 $ cd ~/evalmut && PYTHONPATH=.:external python3 -m evalmut.cli run external/promptfoo_suite.py
-  mutation score    45.5%   (5 caught / 11 applied; 71 n/a)
+  mutation score    45.5%   (5 caught / 11 applied; 79 n/a)
   holes            6  (2 vacuous, 2 blind, 2 coverage-gap)
 ```
 

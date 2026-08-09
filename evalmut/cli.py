@@ -33,10 +33,17 @@ def _load_suite(path: str):
     if spec is None or spec.loader is None:
         sys.exit(f"evalmut: cannot load suite from {path}")
     mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    if not hasattr(mod, "suite"):
-        sys.exit(f"evalmut: {path} must define `suite` (a list of EvalCase)")
-    return list(mod.suite), (list(mod.operators) if hasattr(mod, "operators") else None)
+    # Let a suite import sibling modules (a suite.py next to a my_graders.py) and let it self-import:
+    # register the module before exec so dataclasses / pickling resolve to this same object.
+    sys.path.insert(0, str(p.parent))
+    sys.modules[spec.name] = mod
+    try:
+        spec.loader.exec_module(mod)
+        if not hasattr(mod, "suite"):
+            sys.exit(f"evalmut: {path} must define `suite` (a list of EvalCase)")
+        return list(mod.suite), (list(mod.operators) if hasattr(mod, "operators") else None)
+    except Exception as e:  # a raising import or a non-iterable `suite` shouldn't dump a raw traceback
+        sys.exit(f"evalmut: error loading {path}: {type(e).__name__}: {e}")
 
 
 def _result_dict(r: MutationResult) -> dict:

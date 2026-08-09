@@ -79,7 +79,7 @@ def run_case(case: EvalCase, operators: Sequence[MutationOperator]) -> list[Muta
     # verdict instead of re-invoking the grader on case.good once per operator (wasteful for a
     # slow grader; incorrect for a stateful/side-effecting one). Cleared in finally so id(case)
     # is never left mapped past this case's operator loop.
-    _prime_grader_id(case, grader_id)
+    prev_grader_id = _prime_grader_id(case, grader_id)
 
     results: list[MutationResult] = []
     try:
@@ -89,7 +89,17 @@ def run_case(case: EvalCase, operators: Sequence[MutationOperator]) -> list[Muta
             # would suggest it had something to say. (Text operators on a tool-only grader, etc.)
             if op.field not in case.judges:
                 continue
-            mutant = op.apply(case)
+            try:
+                mutant = op.apply(case)
+            except Exception as exc:
+                # A user operator that crashes while BUILDING the mutant must not abort the whole
+                # run and discard every already-collected result. Record it as ERROR naming the
+                # OPERATOR (a distinct detail from the grader-crash branch below), surface it,
+                # and move on to the next operator.
+                results.append(_result(case, grader_id, op, Outcome.ERROR,
+                                       f"operator raised: {type(exc).__name__}: {exc}",
+                                       mutant_preview=""))
+                continue
             if mutant is None:
                 results.append(_result(case, grader_id, op, Outcome.NA,
                                         "n/a: operator not applicable here", mutant_preview=""))
@@ -114,7 +124,7 @@ def run_case(case: EvalCase, operators: Sequence[MutationOperator]) -> list[Muta
                                    mutant_preview=_mutated_field_preview(op, mutant),
                                    grader_error=grader_error))
     finally:
-        _clear_grader_id(case)
+        _clear_grader_id(case, prev_grader_id)
     return results
 
 

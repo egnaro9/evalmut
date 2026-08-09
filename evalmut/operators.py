@@ -84,13 +84,21 @@ _GARBAGE2 = "8H@ac3%o"                          # disjoint alphabet, mixed case 
 _grader_id_by_case: dict[int, str] = {}
 
 
-def _prime_grader_id(case: EvalCase, grader_id: str) -> None:
-    """Seed the per-case memo from the already-computed baseline verdict (called by run_case)."""
+def _prime_grader_id(case: EvalCase, grader_id: str) -> Optional[str]:
+    """Seed the per-case memo from the already-computed baseline verdict (called by run_case).
+    Returns any id already primed for this case so a nested/reentrant run_case on the same case
+    can restore the outer entry instead of the inner clear wiping it."""
+    prev = _grader_id_by_case.get(id(case))
     _grader_id_by_case[id(case)] = grader_id
+    return prev
 
 
-def _clear_grader_id(case: EvalCase) -> None:
-    _grader_id_by_case.pop(id(case), None)
+def _clear_grader_id(case: EvalCase, prev: Optional[str] = None) -> None:
+    """Undo a _prime: restore an outer entry if one was primed (nested run_case), else drop it."""
+    if prev is not None:
+        _grader_id_by_case[id(case)] = prev
+    else:
+        _grader_id_by_case.pop(id(case), None)
 
 
 def _grader_id(case: EvalCase) -> str:
@@ -595,8 +603,11 @@ def _inject_denylisted_tool(case: EvalCase) -> Optional[GradeInput]:
             return None
     except Exception:
         return None
-    calls = list(case.good.tool_calls or ())
-    return replace(case.good, tool_calls=tuple(calls) + ({"tool": tool},))
+    # Copy each existing call dict so the mutant shares NO mutable state with case.good: a grader
+    # that mutates its input in place would otherwise corrupt case.good's live tool_call objects and
+    # taint every later operator on this case (sacred honesty — a mutant is a fresh, independent case).
+    calls = tuple(dict(c) if isinstance(c, dict) else c for c in (case.good.tool_calls or ()))
+    return replace(case.good, tool_calls=calls + ({"tool": tool},))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
