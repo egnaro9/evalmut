@@ -75,10 +75,32 @@ _GARBAGE = "zxqfp wgbrtl mnkvd frljpz qptxw"   # letters: z x q f p w g b r t l 
 _GARBAGE2 = "8H@ac3%o"                          # disjoint alphabet, mixed case + digits + punctuation
 
 
+# Run-scoped memo of the grader's clean-reference id, keyed by id(case). run_case seeds it
+# from the baseline verdict and clears it when the case's operator loop ends, so the grader is
+# invoked on case.good exactly ONCE per case — the family-gating below no longer re-runs it per
+# operator (waste for a slow grader; wrong for a stateful/side-effecting one). It is populated
+# only for the lifetime of that loop, so id() can never be recycled to a stale entry; outside
+# run_case the memo is empty and _grader_id computes fresh.
+_grader_id_by_case: dict[int, str] = {}
+
+
+def _prime_grader_id(case: EvalCase, grader_id: str) -> None:
+    """Seed the per-case memo from the already-computed baseline verdict (called by run_case)."""
+    _grader_id_by_case[id(case)] = grader_id
+
+
+def _clear_grader_id(case: EvalCase) -> None:
+    _grader_id_by_case.pop(id(case), None)
+
+
 def _grader_id(case: EvalCase) -> str:
     """The grader's own id, read from its verdict on the clean reference. A CONTRACT signal
     (gradecore's vocabulary), used only to recognize a known grader family — never trusted as
-    a promise about a composite grader's full behavior."""
+    a promise about a composite grader's full behavior. Reuses the per-case memo when run_case
+    has primed it (see _grader_id_by_case), so a slow/stateful grader is not re-invoked per operator."""
+    k = id(case)
+    if k in _grader_id_by_case:
+        return _grader_id_by_case[k]
     try:
         return case.grader(case.good).grader_id
     except Exception:

@@ -14,6 +14,7 @@ from gradecore import GradeInput, Verdict
 
 from .case import EvalCase
 from .operator import MutationOperator
+from .operators import _clear_grader_id, _prime_grader_id
 from .outcome import OperatorType, Outcome, Polarity, outcome_for
 
 
@@ -74,38 +75,46 @@ def run_case(case: EvalCase, operators: Sequence[MutationOperator]) -> list[Muta
             f"output ({baseline.detail}). Fix the reference or the grader before mutating."
         )
     grader_id = baseline.grader_id
+    # Seed the per-case grader-id memo so the family-gating operators reuse the baseline's
+    # verdict instead of re-invoking the grader on case.good once per operator (wasteful for a
+    # slow grader; incorrect for a stateful/side-effecting one). Cleared in finally so id(case)
+    # is never left mapped past this case's operator loop.
+    _prime_grader_id(case, grader_id)
 
     results: list[MutationResult] = []
-    for op in operators:
-        # An operator that mutates a field the grader does not judge is irrelevant to this
-        # case, not a finding about it — skip it silently rather than record a false NA that
-        # would suggest it had something to say. (Text operators on a tool-only grader, etc.)
-        if op.field not in case.judges:
-            continue
-        mutant = op.apply(case)
-        if mutant is None:
-            results.append(_result(case, grader_id, op, Outcome.NA,
-                                    "n/a: operator not applicable here", mutant_preview=""))
-            continue
+    try:
+        for op in operators:
+            # An operator that mutates a field the grader does not judge is irrelevant to this
+            # case, not a finding about it — skip it silently rather than record a false NA that
+            # would suggest it had something to say. (Text operators on a tool-only grader, etc.)
+            if op.field not in case.judges:
+                continue
+            mutant = op.apply(case)
+            if mutant is None:
+                results.append(_result(case, grader_id, op, Outcome.NA,
+                                        "n/a: operator not applicable here", mutant_preview=""))
+                continue
 
-        grader_error: Optional[str] = None
-        try:
-            v: Verdict = case.grader(mutant)
-            outcome = outcome_for(op.polarity, bool(v.passed))
-            detail = v.detail
-        except Exception as exc:
-            # A grader that crashes on a well-formed mutant did not "catch" anything — it
-            # failed to produce a verdict. Scoring a crash as a catch would hide a fragile
-            # grader (e.g. a rubber-stamp that indexes text[0] and dies on the blank-output
-            # probe, then reads as CAUGHT and vanishes from the vacuous report). ERROR is
-            # its own outcome, surfaced, excluded from the score.
-            outcome = Outcome.ERROR
-            detail = f"grader raised: {type(exc).__name__}: {exc}"
-            grader_error = f"{type(exc).__name__}: {exc}"
+            grader_error: Optional[str] = None
+            try:
+                v: Verdict = case.grader(mutant)
+                outcome = outcome_for(op.polarity, bool(v.passed))
+                detail = v.detail
+            except Exception as exc:
+                # A grader that crashes on a well-formed mutant did not "catch" anything — it
+                # failed to produce a verdict. Scoring a crash as a catch would hide a fragile
+                # grader (e.g. a rubber-stamp that indexes text[0] and dies on the blank-output
+                # probe, then reads as CAUGHT and vanishes from the vacuous report). ERROR is
+                # its own outcome, surfaced, excluded from the score.
+                outcome = Outcome.ERROR
+                detail = f"grader raised: {type(exc).__name__}: {exc}"
+                grader_error = f"{type(exc).__name__}: {exc}"
 
-        results.append(_result(case, grader_id, op, outcome, detail,
-                               mutant_preview=_mutated_field_preview(op, mutant),
-                               grader_error=grader_error))
+            results.append(_result(case, grader_id, op, outcome, detail,
+                                   mutant_preview=_mutated_field_preview(op, mutant),
+                                   grader_error=grader_error))
+    finally:
+        _clear_grader_id(case)
     return results
 
 
