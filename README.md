@@ -118,7 +118,7 @@ $ evalmut operators        # every one, with its provenance
 ## Install & use
 
 ```bash
-pip install -e .            # depends on gradecore
+pip install -e .            # resolves gradecore from github.com/egnaro9/gradecore
 ```
 
 ```python

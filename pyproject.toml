@@ -9,7 +9,7 @@ description = "Mutation testing for evals: inject known defects into the system 
 requires-python = ">=3.11"
 readme = "README.md"
 license = { text = "MIT" }
-dependencies = ["gradecore>=0.1.0"]
+dependencies = ["gradecore @ git+https://github.com/egnaro9/gradecore.git"]
 
 [project.scripts]
 evalmut = "evalmut.cli:main"
