@@ -30,8 +30,9 @@ def _load_suite(path: str):
     if not p.exists():
         sys.exit(f"evalmut: no such suite file: {path}")
     spec = importlib.util.spec_from_file_location("_evalmut_suite", p)
+    if spec is None or spec.loader is None:
+        sys.exit(f"evalmut: cannot load suite from {path}")
     mod = importlib.util.module_from_spec(spec)
-    assert spec and spec.loader
     spec.loader.exec_module(mod)
     if not hasattr(mod, "suite"):
         sys.exit(f"evalmut: {path} must define `suite` (a list of EvalCase)")

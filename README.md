@@ -145,6 +145,13 @@ evalmut run your_suite.py --json      # machine-readable
 
 A suite file just defines `suite` (a list of `EvalCase`) and, optionally, `operators`.
 
+> **Security — evalmut executes your suite.** Loading a suite imports and runs it, and
+> mutation runs invoke your grader code, so `evalmut run` executes arbitrary Python from
+> the suite file (the same trust model as `pytest`). Only run suites you trust. If you wire
+> it into CI as a PR gate, do **not** run it against forks/untrusted PRs, and give the job no
+> secrets it doesn't need — a malicious suite file would otherwise run with your CI credentials.
+> Prefer a sandboxed/isolated runner for untrusted input.
+
 ## Design
 
 - `outcome.py` — the four outcomes (caught / missed / flagged / n-a), the two polarities,
