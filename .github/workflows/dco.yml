@@ -1,0 +1,30 @@
+name: dco
+# Every PR commit must carry a Signed-off-by line matching its author
+# (git commit -s). Applies to pull requests only; direct pushes by the
+# maintainer are outside the DCO requirement.
+on:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  dco:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: every PR commit is signed off by its author
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="${{ github.event.pull_request.base.sha }}"
+          head="${{ github.event.pull_request.head.sha }}"
+          bad=0
+          while read -r sha; do
+            author="$(git log -1 --format='%an <%ae>' "$sha")"
+            if ! git log -1 --format='%B' "$sha" | grep -qF "Signed-off-by: ${author}"; then
+              echo "MISSING/MISMATCHED sign-off on ${sha:0:7} (author: ${author})"
+              bad=1
+            fi
+          done < <(git rev-list "${base}..${head}")
+          exit "$bad"
