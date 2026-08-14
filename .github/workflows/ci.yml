@@ -1,0 +1,46 @@
+name: evalmut
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      # gradecore is pinned to the version the committed findings are ABOUT:
+      # the dogfood results are claims about 0.10.0's documented grader
+      # scopings, and a newer gradecore that widens a grader would (rightly)
+      # turn the bundle tests red for the wrong reason here.
+      - run: pip install gradecore==0.10.0 -e . pytest
+      - run: python -m pytest -q
+
+  bundle-freshness:
+    # The battery + emitter re-run must reproduce every committed artifact
+    # and the closed VAC bundle byte-for-byte. `git status --porcelain`
+    # rather than `git diff` so a NEW untracked artifact also fails — a
+    # diff-only gate is blind to files the emitter grew.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # the stamp is the last CODE-touching commit; a
+                           # shallow clone collapses that to HEAD and fails
+                           # the byte-identity check on the stamp line alone
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install gradecore==0.10.0 -e .
+      - name: re-run the battery + emitter and require identical committed bytes
+        run: |
+          python emit_vac.py
+          status=$(git status --porcelain -- docs external vac)
+          if [ -n "$status" ]; then
+            echo "$status"
+            git diff -- docs external vac
+            echo "FRESHNESS FAILURE: the committed artifacts/bundle are not what the code re-emits"
+            exit 1
+          fi
