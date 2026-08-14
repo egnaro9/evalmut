@@ -1,0 +1,139 @@
+{
+ "vac_version": "0.1",
+ "claim": {
+  "capability": "eval-suite mutation testing over a mined operator battery: gradecore's own grader-family suite scores 32/35 with 3 holes, and the committed ports of promptfoo's documented deterministic assertions score 5/11 with 6 holes \u2014 every number recomputable from committed per-mutation rows",
+  "scope": "exactly the two committed suites at the stamped commit \u2014 demos/dogfood_gradecore.py (gradecore 0.10.0's grader families, their documented scoping the ground truth) and external/promptfoo_suite.py (committed ports of promptfoo's documented deterministic assertions) \u2014 mutated by the operator battery pinned in operators.json and graded by each suite's own graders; deterministic throughout: no LLM judge, no sampling, no network, no clock",
+  "limitations": [
+   "injected defects are author-chosen: every operator is mined from a real, documented failure (real_origin in operators.json) but the selection is still the issuer's \u2014 a score over this battery bounds nothing about defect classes outside it; certified-defect ground truth is reference-fleet's job, not this bundle's",
+   "the promptfoo findings grade committed PORTS of promptfoo's documented deterministic assertion semantics (external/promptfoo_assertions.py), not promptfoo's shipped codebase, and say nothing about its LLM-judged assertion types",
+   "the dogfood findings are claims about gradecore 0.10.0's documented grader scopings; a later gradecore that widens a grader dissolves them \u2014 replay must install gradecore==0.10.0",
+   "operators that cannot establish a mutant's polarity for a case return n/a and leave the score's denominator (150 and 79 of the rows here); the score is over applied mutations only",
+   "the paper's process narrative (false-positive convergence across review passes) is not covered by this bundle: no committed artifact recomputes it",
+   "byte-identity of the two rendered .txt reports requires UTF-8 output (the emitter forces PYTHONUTF8=1 in its subprocesses); the .json artifacts are ensure_ascii and locale-immune"
+  ]
+ },
+ "subject": {
+  "kind": "suite-archetype",
+  "id": "demos/dogfood_gradecore.py + external/promptfoo_suite.py under the evalmut mined-operator battery",
+  "version": {
+   "evalmut": "0.1.0",
+   "gradecore": "0.10.0",
+   "suites_commit": "77e8c3e"
+  }
+ },
+ "protocol": {
+  "issuer": "egnaro9/evalmut",
+  "issuer_commit": "77e8c3e",
+  "task": "mined-operator mutation battery over the two committed suites",
+  "hashes": {
+   "dogfood_suite_sha256": "a91270baa80366b749c15ac9e131aaa2f4ec9802d0534d56c35fcb433f42aa68",
+   "promptfoo_suite_sha256": "398052806956a7ea750a9323c26d3301b77b24d33113f29fc69188090690804a",
+   "promptfoo_assertions_sha256": "581936bc4d117a661579b071d74e4afd523fb9443c5fd220e1cb94a55bc4f857"
+  },
+  "grading": "deterministic: each operator mutates one graded field of a case with a polarity it must itself establish against the case's own reference (else n/a), the suite's grader is re-run on the mutant, and the outcome is classified caught/missed/flagged/error/na; score = caught/applied; no sampling, no LLM judge, no clock",
+  "control_policy": "baseline-green enforced per case (a grader failing or crashing on its own reference output is excluded and reported by name, never silently scored); EQUIVALENT mutations are graded beside DEFECT mutations, so a grader that fails everything reads brittle, not vigilant; SANITY probes (blank/garbage) expose graders that cannot fail; a grader that crashes on a defect is surfaced beside the blind spots, never scored as a catch"
+ },
+ "evidence": [
+  {
+   "path": "dogfood_gradecore.json",
+   "sha256": "3c93ddb9b85509be4f3c58da169f5734fd2ee383b81476e0a9046d557076ff8b"
+  },
+  {
+   "path": "dogfood_gradecore.txt",
+   "sha256": "b6863732bce748554455d3f8bd138c848f4ac47a3fd144f3c1bb694739feeaff"
+  },
+  {
+   "path": "operators.json",
+   "sha256": "0384713699df804e1867a2406fb7e5d631ef891152d018b4d778f63b8fb957ab"
+  },
+  {
+   "path": "promptfoo_findings.json",
+   "sha256": "03f51bf5530c6224d17ca24a2f17420534c7052a18b9585cc1a5648ef9c17e8e"
+  },
+  {
+   "path": "promptfoo_findings.txt",
+   "sha256": "389de693c5747ac9c987cefac88da9e4885ae6b1f022305af2eb71c01523e83f"
+  }
+ ],
+ "results": {
+  "summary": {
+   "dogfood_gradecore": {
+    "score_3": 0.914,
+    "caught": 32,
+    "applied": 35,
+    "na": 150,
+    "holes": {
+     "blind": 1,
+     "coverage_gap": 2
+    }
+   },
+   "promptfoo_ports": {
+    "score_3": 0.455,
+    "caught": 5,
+    "applied": 11,
+    "na": 79,
+    "holes": {
+     "vacuous": 2,
+     "blind": 2,
+     "coverage_gap": 2
+    }
+   },
+   "operators": 18
+  },
+  "checks": [
+   {
+    "profile": "evalmut-run-v1",
+    "artifact": "dogfood_gradecore.json",
+    "catalog": "operators.json",
+    "expect": {
+     "caught": 32,
+     "missed": 3,
+     "flagged": 0,
+     "error": 0,
+     "na": 150,
+     "applied": 35,
+     "results": 185,
+     "score_3": 0.914,
+     "vacuous": 0,
+     "blind": 1,
+     "brittle": 0,
+     "coverage_gap": 2,
+     "operators_exercised": 18,
+     "operators": 18
+    }
+   },
+   {
+    "profile": "evalmut-run-v1",
+    "artifact": "promptfoo_findings.json",
+    "catalog": "operators.json",
+    "expect": {
+     "caught": 5,
+     "missed": 6,
+     "flagged": 0,
+     "error": 0,
+     "na": 79,
+     "applied": 11,
+     "results": 90,
+     "score_3": 0.455,
+     "vacuous": 2,
+     "blind": 2,
+     "brittle": 0,
+     "coverage_gap": 2,
+     "operators_exercised": 15,
+     "operators": 18
+    }
+   }
+  ]
+ },
+ "replay": {
+  "issuer_commit": "77e8c3e",
+  "commands": [
+   "git clone https://github.com/egnaro9/evalmut issuer",
+   "git -C issuer checkout 77e8c3e",
+   "python -m pip install gradecore==0.10.0 ./issuer",
+   "( cd issuer && python emit_vac.py )",
+   "for f in dogfood_gradecore.txt dogfood_gradecore.json operators.json promptfoo_findings.txt promptfoo_findings.json vac.json; do cmp issuer/vac/$f $f || exit 1; done"
+  ],
+  "expected": "every command exits 0 and every cmp stays silent: the emitter re-runs the whole battery at the stamped commit and re-emits all five artifacts plus vac.json byte-identical to this bundle (commands run from the bundle directory). Inside the emitter each `evalmut run` exits 1 BY DESIGN \u2014 the found holes fail evalmut's own CI gate; the finding is the result \u2014 and the emitter treats exit 0 and 1 both as success. The emitter forces UTF-8 output in its subprocesses, so locale cannot perturb the rendered report glyphs."
+ }
+}
