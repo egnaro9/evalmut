@@ -52,6 +52,13 @@ weakness a *blind spot* (a present check that's broken) and the two `valid_json`
 claimed to check key presence. A tool that cries "broken!" at a correctly-scoped check
 is a tool you learn to ignore.
 
+**The holes above are replayable evidence, not anecdotes.** Every claim this repo
+publishes ships as a closed, stamped bundle in [`vac/`](vac), registered in the
+program-wide [evidence registry](https://egnaro9.github.io/vac-protocol/)
+([registry.json](https://github.com/egnaro9/vac-protocol/blob/main/registry.json)) —
+and [REPLAY_REQUEST.md](https://github.com/egnaro9/vac-protocol/blob/main/REPLAY_REQUEST.md)
+is the ten-minute path to trying to falsify one.
+
 ## The two ways an eval lies
 
 Most eval tooling only asks the first of these. Both are real, and `evalmut` tests both:
