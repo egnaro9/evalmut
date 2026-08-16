@@ -19,7 +19,7 @@ mergeable when:
 
 - the full test suite is green;
 - every generated artifact (results, bundles, fixtures, comparison tables)
-  is byte-identical when regenerated — the freshness gates in CI enforce
+  is byte-identical when regenerated. The freshness gates in CI enforce
   this;
 - any new gate or check comes with a test that feeds it corrupted input and
   proves it fires. A gate without a liveness test is untested code.

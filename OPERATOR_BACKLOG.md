@@ -1,14 +1,14 @@
-# Operator backlog — candidate defect classes, gated on provenance
+# Operator backlog. Candidate defect classes, gated on provenance
 
 This is **not a build target.** evalmut ships 18 operators because each one names a *real,
-documented* failure it reproduces ("mined, not authored" — see the README). The list below
+documented* failure it reproduces ("mined, not authored". See the README). The list below
 is the opposite of code-not-yet-written: it is **defect shapes we have seen referenced but
 have not yet sourced a real instance for.** An item leaves this file and becomes an operator
-**only** the day we can point at a documented case of it — a user report, a promptfoo issue,
-a model post-mortem, a line in a real grader — and cite that case in `real_origin`.
+**only** the day we can point at a documented case of it. A user report, a promptfoo issue,
+a model post-mortem, a line in a real grader. And cite that case in `real_origin`.
 
 Kept this way the backlog *serves* the discipline: it captures the idea without diluting the
-catalog with authored mutations that only test what we already imagined a check might miss —
+catalog with authored mutations that only test what we already imagined a check might miss -
 which is exactly the blind spot evalmut exists to find. **Do not** implement one of these to
 "reach a number." Promote one when its real defect walks in the door.
 
@@ -16,10 +16,10 @@ which is exactly the blind spot evalmut exists to find. **Do not** implement one
 
 1. **Find the real defect.** A concrete, documented instance where a grader let this shape
    pass (DEFECT) or wrongly flagged it (EQUIVALENT/brittle). Screenshot, issue link, commit,
-   transcript — something citable.
+   transcript. Something citable.
 2. **Establish polarity structurally.** The operator must be able to prove, for the case in
    hand, that the mutant is provably-wrong (DEFECT) or provably-still-correct (EQUIVALENT),
-   from the case's own ground truth — never a guess. Where it can't, it DECLINES (N/A).
+   from the case's own ground truth. Never a guess. Where it can't, it DECLINES (N/A).
 3. **Cite it** in `real_origin`, add the operator, and add a regression test. The
    `test_every_operator_names_a_real_origin` gate enforces the citation.
 
@@ -41,14 +41,14 @@ still-correct output a sound grader must still pass; catches brittle checks).
 |---|---|---|---|
 | `unicode_normalize` | NFC vs NFD (`café`), same text different bytes | E | an `exact` grader that `==`-compares without NFC-normalizing |
 | `smart_quotes` | typographic `’ “ ”` vs ASCII `' " "` around a correct answer | E | a grader that fails a curly-quote variant of the right answer |
-| `homoglyph_swap` | a look-alike char (Cyrillic `а` in `data`) — looks right, is wrong | D | a grader/eval where a homoglyph slipped a wrong answer past a human/check |
+| `homoglyph_swap` | a look-alike char (Cyrillic `а` in `data`). Looks right, is wrong | D | a grader/eval where a homoglyph slipped a wrong answer past a human/check |
 
 ### presence / contains / regex  *(extends `keyword_present_but_negated`, `garbage_answer`)*
 | candidate | shape | pol | needs |
 |---|---|---|---|
-| `needle_in_larger_word` | `contains("cat")` passes `"category"` — substring, not the token | D | a `contains` gate that a longer word satisfied |
+| `needle_in_larger_word` | `contains("cat")` passes `"category"`. Substring, not the token | D | a `contains` gate that a longer word satisfied |
 | `answer_echoed_from_prompt` | keyword present because the reply echoed the question, not answered it | D | a proof/keyword gate fooled by a prompt echo (sibling of the transcript-grep origin) |
-| `regex_overbroad` | `.+` / `\d+` / `\S+` matches garbage — the pattern asserts nothing | D | a real regex grader whose pattern is vacuous |
+| `regex_overbroad` | `.+` / `\d+` / `\S+` matches garbage. The pattern asserts nothing | D | a real regex grader whose pattern is vacuous |
 
 ### json  *(extends `json_value_corruption`, `json_value_type_flip`)*
 | candidate | shape | pol | needs |
@@ -81,16 +81,16 @@ still-correct output a sound grader must still pass; catches brittle checks).
 |---|---|---|---|
 | `over_abstain_answerable` | refuses/hedges on a fair, answerable question (the abstention twin of over-refusal) | E | an abstention grader that penalizes a correct answer as if it were a fabrication |
 
-### multi-turn / context  *(new family — no operator yet; needs a multi-turn case shape first)*
+### multi-turn / context  *(new family. No operator yet; needs a multi-turn case shape first)*
 | candidate | shape | pol | needs |
 |---|---|---|---|
 | `contradict_earlier_turn` | final answer contradicts a commitment made earlier in the conversation | D | a grader that judges only the last turn; **also needs** an EvalCase that carries multi-turn history |
-| `ignore_later_instruction` | obeys the first instruction, ignores a corrected one issued later | D | same — a multi-turn-aware case shape must exist before this can establish polarity |
+| `ignore_later_instruction` | obeys the first instruction, ignores a corrected one issued later | D | same. A multi-turn-aware case shape must exist before this can establish polarity |
 
 ### meta  *(hardest; evalmut is deterministic-first)*
 | candidate | shape | pol | needs |
 |---|---|---|---|
-| `grader_nondeterminism` | same input, different verdict across runs (a flaky / LLM-judge grader) | — | a real flaky grader; and a design decision on how a deterministic tool reports a non-deterministic one (probably a separate "flaky" outcome, not a mutation) |
+| `grader_nondeterminism` | same input, different verdict across runs (a flaky / LLM-judge grader) |: | a real flaky grader; and a design decision on how a deterministic tool reports a non-deterministic one (probably a separate "flaky" outcome, not a mutation) |
 
 ## Notes
 
@@ -98,7 +98,7 @@ still-correct output a sound grader must still pass; catches brittle checks).
   first needs an EvalCase that can hold conversation history; the second needs a way to
   report non-determinism that doesn't pretend to be a mutation. Design those before mining.
 - Several rows may already be *partially* covered by an existing operator on a specific case
-  — check before promoting, and prefer sharpening the existing operator to adding a near-twin.
+ : check before promoting, and prefer sharpening the existing operator to adding a near-twin.
 - If a candidate can't establish polarity from ground truth (only a human could judge it),
-  it does **not** belong in evalmut at all — it belongs in a rubric/LLM-judge tool, which is
+  it does **not** belong in evalmut at all. It belongs in a rubric/LLM-judge tool, which is
   the thing evalmut is deliberately not.
