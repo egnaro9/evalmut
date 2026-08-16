@@ -268,13 +268,19 @@ def build_manifest(artifacts: dict[str, bytes], commit: str) -> str:
                 "operators": len(ops),
             },
             "checks": [
+                # `render` binds the human-readable .txt to the payload it
+                # was rendered from. Both .txt files were pinned by evidence
+                # and read by no check, so the bundle carried two artifacts
+                # showing headline numbers nothing verified.
                 {"profile": "evalmut-run-v1",
                  "artifact": "dogfood_gradecore.json",
                  "catalog": "operators.json",
+                 "render": "dogfood_gradecore.txt",
                  "expect": {**dog, "operators": len(ops)}},
                 {"profile": "evalmut-run-v1",
                  "artifact": "promptfoo_findings.json",
                  "catalog": "operators.json",
+                 "render": "promptfoo_findings.txt",
                  "expect": {**pf, "operators": len(ops)}},
             ],
         },
