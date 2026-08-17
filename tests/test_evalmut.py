@@ -832,3 +832,25 @@ def test_run_is_deterministic():
     ]
     sig = lambda r: [(x.case_name, x.operator_id, x.outcome.value) for x in r.results]
     assert sig(run(suite)) == sig(run(suite)) == sig(run(suite))
+
+
+def test_the_template_demo_runs_and_finds_something():
+    """The README tells a stranger to copy demos/template.py and run it. If that file ever stops
+    working, the documented first-run experience is broken and nothing else in the suite would
+    notice, because every other test uses fixtures built in-process.
+
+    It must also FIND something. A template whose example grader came back clean would teach a
+    first-time reader that a green result is the normal outcome, which is the opposite of the
+    lesson."""
+    import importlib.util
+    import pathlib
+    from evalmut import run
+
+    path = pathlib.Path(__file__).resolve().parents[1] / "demos" / "template.py"
+    assert path.exists(), "demos/template.py is referenced by the README and is missing"
+    spec = importlib.util.spec_from_file_location("_tmpl", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    report = run(list(mod.suite))
+    assert report.total.applied > 0, "the template applied no mutations"
+    assert report.holes, "the template's example grader came back clean; it should demonstrate a hole"

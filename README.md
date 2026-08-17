@@ -152,6 +152,48 @@ evalmut run your_suite.py --json      # machine-readable
 
 A suite file just defines `suite` (a list of `EvalCase`) and, optionally, `operators`.
 
+### Start here
+
+`demos/template.py` is a paste-sized suite pointed at a plain Python grader, with every declared
+bar explained inline. Copy it, replace the grader body, run it:
+
+```bash
+evalmut run demos/template.py --html report.html --all
+```
+
+It is one case on purpose, and one case is not a suite: every operator is evaluated per case, so
+a single case tells you about one grader on one input. Add a case per grader you rely on, and
+start with the grader you least trust. A suite of only the checks you are confident in will tell
+you what you already believe.
+
+**A large `n/a` is normal and is not "skipped".** An operator declines when it cannot prove, for
+your case, that its mutation makes the output wrong or leaves it right. That refusal to guess is
+why a reported hole is a fact. To make more operators fire, declare more on the case; never
+loosen the bars.
+
+### The other three commands
+
+```bash
+evalmut run suite.py --html report.html --all   # a standalone page: no server, no network
+evalmut diff old.json new.json                  # what changed between two runs
+evalmut manifest suite.py > fixtures.json       # pin the fixture corpus
+evalmut manifest suite.py --check fixtures.json # verify it has not moved
+```
+
+`--html` writes one self-contained file that opens from a file path. It leads with the holes
+rather than the score, because a percentage reads as a grade while the actionable fact is that
+two checks are broken.
+
+`diff` exists for one reason: **a hole leaves a report either because you fixed the check or
+because the operator stopped applying, and both make the score go up.** Deleting the failing case,
+dropping a `tolerates`, or narrowing `judges` all shrink the hole count without a grader changing.
+The diff keys on `(case, operator)` and never merges a fix with a disappearance, and it exits
+nonzero on a disappearance, because a suite that stopped asking is not a suite that improved.
+
+`manifest` pins the fixtures a run was computed over, so a case reworded after a disappointing
+result is a visible diff rather than a silent change of subject. It hashes the declared bars too:
+widening `num_tol` changes what counts as a defect without touching a fixture.
+
 > **Security. Evalmut executes your suite.** Loading a suite imports and runs it, and
 > mutation runs invoke your grader code, so `evalmut run` executes arbitrary Python from
 > the suite file (the same trust model as `pytest`). Only run suites you trust. If you wire
