@@ -99,6 +99,20 @@ letter-spacing:.09em;border-bottom:1px solid var(--rule);padding:.45rem .5rem}
 td{padding:.4rem .5rem;border-bottom:1px solid var(--rule);color:var(--ink2)}
 td.o{font-weight:600}
 .wrapx{overflow-x:auto}
+/* Scriptless filter: radio inputs plus sibling selectors. The page must open from a file:// path
+   on a machine with no network, and executable markup is the one thing this renderer will not
+   ship, so the interaction is CSS. Costs a little verbosity, keeps the property the tests
+   enforce. (The comment avoids naming that tag literally, because the self-contained test scans
+   for the string and a comment describing the rule would violate it.) */
+.filt{display:flex;flex-wrap:wrap;gap:.4rem;margin:0 0 1.5rem}
+.filt input{position:absolute;opacity:0;width:0;height:0}
+.filt label{font-family:var(--mono);font-size:.72rem;letter-spacing:.04em;color:var(--ink3);
+border:1px solid var(--rule);border-radius:999px;padding:.25rem .7rem;cursor:pointer;
+background:var(--panel);user-select:none}
+.filt label:hover{color:var(--accent);border-color:var(--accent)}
+.filt input:focus-visible+label{outline:2px solid var(--accent);outline-offset:2px}
+.filt input:checked+label{color:var(--bg);background:var(--ink);border-color:var(--ink)}
+.filt b{font-variant-numeric:tabular-nums}
 footer{margin-top:3rem;padding-top:1rem;border-top:1px solid var(--rule);color:var(--ink3);
 font-size:.76rem;line-height:1.6}
 """
@@ -116,7 +130,7 @@ def _hole_card(h: dict, kind: str) -> str:
     mutant = (h.get("mutant_preview") or "").strip()
     mut = (f'<div class="mut"><span class="lbl">what was injected</span>{_e(mutant)}</div>'
            if mutant else "")
-    return f"""<div class="hole" style="--kind:var({_KIND_VAR[kind]})">
+    return f"""<div class="hole" data-fam="{_e(h.get('family') or 'other')}" style="--kind:var({_KIND_VAR[kind]})">
 <div class="hkind"><span class="g">{_e(glyph)}</span>{_e(label)}</div>
 <div class="hmeans">{_e(means)}</div>
 <div class="hid">{_e(h.get('operator_id'))}</div>
@@ -160,6 +174,33 @@ def render_html(payload: dict, *, title: str = "evalmut run") -> str:
         sections.append(f"<h2>{_e(BUCKETS[kind][1])} &middot; {len(rows)}</h2>"
                         + "".join(_hole_card(h, kind) for h in rows))
 
+    # Filter chips, one per operator family present among the HOLES. Families with no hole are
+    # omitted rather than shown empty: a chip that can only ever yield nothing is a dead control.
+    fams: dict[str, int] = {}
+    for kind in ORDER:
+        for h in holes.get(kind, []) or []:
+            f = h.get("family") or "other"
+            fams[f] = fams.get(f, 0) + 1
+    filt = ""
+    if len(fams) > 1:
+        chips = [('<input type="radio" name="fam" id="fam-all" checked>'
+                  f'<label for="fam-all">all <b>{total}</b></label>')]
+        rules = []
+        for i, (f, n) in enumerate(sorted(fams.items())):
+            fid = f"fam-{i}"
+            chips.append(f'<input type="radio" name="fam" id="{fid}">'
+                         f'<label for="{fid}">{_e(f)} <b>{n}</b></label>')
+            # :has() rather than a sibling combinator. The first version used `~ .holes` and
+            # every unit test passed while clicking a chip hid nothing, because the inputs sit
+            # INSIDE .filt and are therefore not siblings of the list. :has() is scoped from the
+            # root and does not care where the input lives.
+            rules.append(f'body:has(#{fid}:checked) .hole:not([data-fam="{_e(f)}"])'
+                         f'{{display:none}}'
+                         f'body:has(#{fid}:checked) .holes h2{{display:none}}')
+        filt = (f'<div class="filt">{"".join(chips)}</div>'
+                f"<style>{''.join(rules)}</style>")
+        sections = [f'<div class="holes">{"".join(sections)}</div>']
+
     results = payload.get("results") or []
     table = ""
     if results:
@@ -188,6 +229,7 @@ def render_html(payload: dict, *, title: str = "evalmut run") -> str:
 <span>errored <b>{_e(tally.get('error', 0))}</b></span>
 <span>declined <b>{_e(na)}</b></span>
 </div>
+{filt}
 {"".join(sections)}
 {table}
 <footer>

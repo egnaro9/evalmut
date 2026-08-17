@@ -104,3 +104,44 @@ def test_all_three_theme_states_are_defined():
     assert "prefers-color-scheme:dark" in out
     assert "[data-theme=dark]" in out
     assert "--bg:" in out.split("prefers-color-scheme")[0], "bare :root must define the palette"
+
+
+def test_family_filter_is_scriptless_and_only_offers_live_chips():
+    """Filtering is radio inputs plus sibling selectors, not code. A chip is emitted only for a
+    family that actually has a hole: a control that can only ever yield an empty list is worse
+    than no control, because it teaches the reader the page is broken."""
+    two_families = {**HOLED, "holes": {**HOLED["holes"],
+                    "blind": [HOLE], "coverage_gap": [{**HOLE, "family": "json",
+                                                       "operator_id": "json_value_type_flip"}]}}
+    out = render_html(two_families)
+    assert "<script" not in out.lower()
+    assert 'type="radio"' in out
+    assert 'data-fam="presence-proxy"' in out and 'data-fam="json"' in out
+    assert ">json <b>1</b>" in out and ">all <b>2</b>" in out
+    assert "trajectory" not in out.split("<footer")[0], "a chip was offered for an absent family"
+
+
+def test_no_filter_when_there_is_nothing_to_filter():
+    """One family means the control would do nothing. Ship no control."""
+    out = render_html(HOLED)
+    assert 'name="fam"' not in out
+
+
+def test_the_filter_does_not_depend_on_dom_nesting():
+    """A regression pin for a bug every other test in this file passed straight through.
+
+    The first filter used `#fam-0:checked ~ .holes ...`. The markup was right, the chips rendered,
+    all unit tests were green, and clicking a chip hid nothing, because the inputs sit inside
+    .filt and a sibling combinator cannot reach out of that. It was only caught by driving real
+    clicks in a browser and reading computed styles.
+
+    A unit test cannot evaluate CSS, so this pins the shape instead: the rule must be scoped from
+    the root with :has(), which does not care where the input lives. That is a proxy, and it is
+    named as one, but it is the specific proxy that would have failed on the specific bug."""
+    two = {**HOLED, "holes": {**HOLED["holes"], "blind": [HOLE],
+                              "coverage_gap": [{**HOLE, "family": "json"}]}}
+    out = render_html(two)
+    assert "body:has(" in out, "the filter is not root-scoped; a nesting change will silently break it"
+    assert "~ .holes" not in out and "~.holes" not in out, (
+        "the filter uses a sibling combinator again, which breaks the moment the inputs are "
+        "wrapped in anything")
