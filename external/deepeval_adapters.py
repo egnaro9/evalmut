@@ -60,6 +60,7 @@ os.environ.setdefault("DEEPEVAL_TELEMETRY_OPT_OUT", "1")
 
 from pydantic import BaseModel  # noqa: E402
 
+from evalmut.sentinel import require_invoked, sentinel  # noqa: E402
 from gradecore import GradeInput, Verdict  # noqa: E402
 
 from deepeval.metrics.utils import copy_metrics  # noqa: E402
@@ -84,6 +85,21 @@ def _fresh(template):
 def _tool_calls(inp: GradeInput) -> list[ToolCall]:
     """evalmut's tool operators speak [{'tool': name}]; deepeval speaks [ToolCall(name=...)]."""
     return [ToolCall(name=str(c.get("tool", ""))) for c in (inp.tool_calls or ())]
+
+
+def _measured(metric, tc, gid: str):
+    """Call deepeval's real `measure()` with a sentinel on it, and REFUSE to return a score if
+    the method was never entered.
+
+    Claim (a) says the import path is proven by `inspect.getfile`. That proves the module loaded.
+    It does not prove `measure()` ran, and the gap between those is where a wrapper can silently
+    answer for the library it names. Every row from this adapter now carries a counted invocation
+    instead of an inference, and a row where deepeval did not run raises rather than reporting a
+    plausible number as a fact about deepeval."""
+    with sentinel(metric, "measure") as w:
+        score = metric.measure(tc, _show_indicator=False)
+    require_invoked(w, context=gid)
+    return score, w
 
 
 def _verdict(metric, score: float, gid: str, extra: str = "") -> Verdict:
@@ -111,7 +127,7 @@ def deepeval_exact_match():
         m = _fresh(template)
         tc = LLMTestCase(input="(task prompt)", actual_output=inp.text,
                          expected_output=str(inp.expected))
-        return _verdict(m, m.measure(tc, _show_indicator=False), "deepeval.ExactMatchMetric")
+        return _verdict(m, _measured(m, tc, "deepeval.ExactMatchMetric")[0], "deepeval.ExactMatchMetric")
     return g
 
 
@@ -128,7 +144,7 @@ def deepeval_pattern_match(pattern: str, *, ignore_case: bool = False):
     def g(inp: GradeInput) -> Verdict:
         m = _fresh(template)
         tc = LLMTestCase(input="(task prompt)", actual_output=inp.text)
-        return _verdict(m, m.measure(tc, _show_indicator=False),
+        return _verdict(m, _measured(m, tc, "deepeval.PatternMatchMetric")[0],
                         "deepeval.PatternMatchMetric", f"pattern {pattern!r}")
     return g
 
@@ -171,7 +187,7 @@ def deepeval_json_correctness(schema: type[BaseModel]):
     def g(inp: GradeInput) -> Verdict:
         m = _fresh(template)
         tc = LLMTestCase(input="(task prompt)", actual_output=inp.text)
-        score = m.measure(tc, _show_indicator=False)
+        score, _w = _measured(m, tc, "deepeval.JsonCorrectnessMetric")
         passed = bool(m.is_successful())
         return Verdict(passed=passed, score=float(score),
                        severity="none" if passed else "med",
@@ -195,7 +211,7 @@ def deepeval_tool_permission(*, allowed: list[str] | None = None,
         m = _fresh(template)
         tc = LLMTestCase(input="(task prompt)", actual_output=inp.text or "(n/a)",
                          tools_called=_tool_calls(inp))
-        return _verdict(m, m.measure(tc, _show_indicator=False), "deepeval.ToolPermissionMetric")
+        return _verdict(m, _measured(m, tc, "deepeval.ToolPermissionMetric")[0], "deepeval.ToolPermissionMetric")
     return g
 
 
@@ -220,5 +236,5 @@ def deepeval_tool_correctness(expected_tools: list[str], *, threshold: float = 0
         m = _fresh(template)
         tc = LLMTestCase(input="(task prompt)", actual_output=inp.text or "(n/a)",
                          tools_called=_tool_calls(inp), expected_tools=list(expected))
-        return _verdict(m, m.measure(tc, _show_indicator=False), "deepeval.ToolCorrectnessMetric")
+        return _verdict(m, _measured(m, tc, "deepeval.ToolCorrectnessMetric")[0], "deepeval.ToolCorrectnessMetric")
     return g
