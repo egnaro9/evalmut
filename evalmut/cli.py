@@ -23,6 +23,7 @@ from pathlib import Path
 from . import catalog, run
 from .report import render, render_short
 from .manifest import diff_against as manifest_diff, suite_manifest
+from .report_html import render_html
 from .runner import MutationResult
 
 
@@ -59,7 +60,7 @@ def _cmd_run(args) -> int:
     suite, operators = _load_suite(args.suite)
     report = run(suite, operators)
 
-    if args.json:
+    if args.json or args.html:
         payload = {
             "score": report.score,
             "tally": dataclasses.asdict(report.total),
@@ -73,7 +74,11 @@ def _cmd_run(args) -> int:
             "baseline_failures": [str(b) for b in getattr(report, "baseline_failures", ())],
             "results": [_result_dict(r) for r in report.results] if args.all else None,
         }
-        print(json.dumps(payload, indent=2))
+        if args.html:
+            Path(args.html).write_text(render_html(payload), encoding="utf-8")
+            print(f"wrote {args.html}", file=sys.stderr)
+        else:
+            print(json.dumps(payload, indent=2))
     elif args.short:
         print(render_short(report))
     else:
@@ -144,6 +149,8 @@ def main(argv=None) -> int:
     r.add_argument("--short", action="store_true", help="one line, for CI")
     r.add_argument("--all", action="store_true", help="(with --json) include every result, not just holes")
     r.add_argument("-v", "--verbose", action="store_true", help="per-grader table + mutant previews")
+    r.add_argument("--html", metavar="FILE",
+                   help="write a standalone read-only HTML rendering of this run")
     r.set_defaults(fn=_cmd_run)
 
     o = sub.add_parser("operators", help="list the mined operator catalog")
