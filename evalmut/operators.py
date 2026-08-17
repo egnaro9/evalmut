@@ -59,6 +59,12 @@ _CONTENT_REQUIRING = {"exact", "exact_cs", "one_of", "number", "contains", "rege
 #  - number — its `expected` is numeric, not a text span truncate can locate;
 #  - grounding — measures faithfulness not completeness, so a truncated-but-faithful answer grounds.
 _ANSWER_PRESENCE_GRADERS = {"exact", "exact_cs"}
+# Graders whose `expected` IS the canonical answer, so replacing the reply with it verbatim is
+# still-correct by contract. contains/regex are excluded: their acceptance needle lives in the
+# grader's closure, so `expected` need not satisfy them and a pass would prove nothing. grounding
+# is excluded because faithfulness is judged against `contexts`, which the bare answer may not
+# cite. valid_json is excluded because `expected` names a required KEY, not a document.
+_CANONICAL_ANSWER_GRADERS = {"exact", "exact_cs", "one_of", "number"}
 
 # Two structurally-DISJOINT opaque garbage strings for the SANITY floor probes. A grader is only
 # vacuous if it accepts a DIVERSE battery of clearly-wrong outputs; a single garbage passing can be
@@ -766,7 +772,12 @@ _TRAILING_PROSE_BREAKS = _IDENTITY_GRADERS | {"valid_json"}
     defect_shape="a disclaimer appended AFTER a complete, correct answer",
     real_origin="gradecore adversarial.py:63 must_comply docstring: a Haiku 4.5 reply gave every "
                 "first-aid step then closed 'I can't provide medical advice' — scanning the whole "
-                "reply flagged a correct answer; the opening-scan fix is what this must NOT break",
+                "reply flagged a correct answer; the opening-scan fix is what this must NOT break. "
+                "Externally corroborated, and the reason a separate verbosity_pad operator is NOT "
+                "shipped: arXiv:2306.05685 Table 3 measured an LLM judge preferring a response "
+                "padded with a repetitive, information-free list 91.3% of the time. Same seam "
+                "(text appended after a complete correct answer), same polarity, so a second "
+                "operator would be a near-twin and the citation lands here instead.",
 )
 def _trailing_disclaimer(case: EvalCase) -> Optional[GradeInput]:
     if "disclaimer" not in case.tolerates:
@@ -867,6 +878,165 @@ def _case_variant(case: EvalCase) -> Optional[GradeInput]:
     return with_text(case.good, sc)
 
 
+@operator(
+    "identical_to_reference", family="equivalent", polarity=Polarity.EQUIVALENT, field="text",
+    defect_shape="the reply replaced with the case's own reference answer verbatim, so a sound "
+                 "metric must return its maximum",
+    real_origin="Three independent repos, three mechanisms, one symptom: a metric floors or caps "
+                "wrong on a PERFECT input. https://github.com/google/BIG-bench/issues/463 "
+                "(evaluate_task returned bleu 0.0 and rouge 0.0 for target 'yes' answered 'yes'); "
+                "https://github.com/nltk/nltk/issues/1285 (sentence_bleu returned 0 for a "
+                "hypothesis equal to one of its references, because the zero-overlap guard "
+                "`if sum_s == 0: return 0` cannot tell p_n all-1 from p_n all-0); "
+                "https://github.com/explodinggradients/ragas/issues/2909 (ContextPrecision "
+                "returns 0.9999999999666667 for verdicts [1,1,1] because an unconditional 1e-10 "
+                "sits in the average-precision denominator, still on main at "
+                "_context_precision.py:126 and :245). Externally corroborates the class Erik hit "
+                "himself in promptfoo #10256.",
+)
+def _identical_to_reference(case: EvalCase) -> Optional[GradeInput]:
+    # No `tolerates` declaration is needed and that is the point: this is not a cosmetic edit the
+    # author has to bless, it is the case's OWN reference answer. A grader that rejects the answer
+    # it declared canonical is broken on its face, whatever the task's tolerance for cosmetics.
+    # Gated to families where `expected` is that answer (see _CANONICAL_ANSWER_GRADERS).
+    if _family(case) not in _CANONICAL_ANSWER_GRADERS:
+        return None
+    exp = case.good.expected
+    if exp is None:
+        return None
+    text = str(exp).strip()
+    if not text:
+        return None
+    return with_text(case.good, text)
+
+
+@operator(
+    "malformed_structure", family="structure", polarity=Polarity.DEFECT, field="text",
+    defect_shape="the output's well-formedness broken (an unclosed document) in a way a lenient "
+                 "parser silently repairs",
+    real_origin="https://github.com/promptfoo/promptfoo/pull/9782 (merged, by i-anubhav-anand): "
+                "`is-xml` accepted non-well-formed XML because the parser it used recovers from "
+                "structural damage rather than rejecting it, so a broken document scored as "
+                "valid. Every shipped json operator here mutates values INSIDE a well-formed "
+                "document; none had ever attacked well-formedness itself.",
+)
+@applies_to_tag("json")
+def _malformed_structure(case: EvalCase) -> Optional[GradeInput]:
+    # Truncating the closing brace is a PROVABLE defect for a json contract: the document no
+    # longer parses, so any grader claiming to validate JSON must reject it. Verified by parsing
+    # rather than assumed, because a text that was never valid JSON to begin with would make the
+    # mutation a no-op and the finding false.
+    text = (case.good.text or "").strip()
+    if not text.endswith("}"):
+        return None
+    try:
+        json.loads(text)
+    except Exception:
+        return None  # not valid JSON to start with; breaking it proves nothing
+    broken = text[:-1].rstrip()
+    try:
+        json.loads(broken)
+        return None  # still parses, so nothing was broken
+    except Exception:
+        return with_text(case.good, broken)
+
+
+@operator(
+    "parser_accepted_variant", family="equivalent", polarity=Polarity.EQUIVALENT, field="text",
+    defect_shape="the document re-serialized into a different but equivalent form the format's "
+                 "own parser accepts (member order and insignificant whitespace changed)",
+    real_origin="https://github.com/promptfoo/promptfoo/pull/9784 (merged, by i-anubhav-anand): "
+                "`is-sql` false-rejected a valid SELECT DISTINCT after a heuristic was added, the "
+                "inverse polarity of #9782 in the same file. JSON object member order is "
+                "insignificant per RFC 8259 section 4, so a re-serialization is the same document "
+                "and a validator that flips on it is checking formatting, not validity.",
+)
+@applies_to_tag("json")
+def _parser_accepted_variant(case: EvalCase) -> Optional[GradeInput]:
+    # Declared, like every EQUIVALENT operator: 'reserialize' says this task's contract treats a
+    # differently-ordered, differently-spaced but semantically identical document as still correct.
+    # Undeclared it declines, because a task may legitimately require canonical serialization.
+    if "reserialize" not in case.tolerates:
+        return None
+    text = (case.good.text or "").strip()
+    try:
+        obj = json.loads(text)
+    except Exception:
+        return None
+    if not isinstance(obj, dict) or len(obj) < 1:
+        return None
+    # Reverse member order and change insignificant whitespace. Round-trip through the parser to
+    # prove the variant is the SAME document before claiming it is still correct.
+    variant = json.dumps({k: obj[k] for k in reversed(list(obj))}, indent=1)
+    if variant == text or json.loads(variant) != obj:
+        return None
+    return with_text(case.good, variant)
+
+
+@operator(
+    "numeric_format_variant", family="equivalent", polarity=Polarity.EQUIVALENT, field="text",
+    defect_shape="the correct number redecorated: a currency symbol and a thousands separator "
+                 "added around an otherwise exact value",
+    real_origin="https://github.com/EleutherAI/lm-evaluation-harness/issues/3214 : GSM8K "
+                "flexible-extract scored ['$29.00'] as WRONG against gold 29, with maintainer "
+                "baberabb agreeing the filter should strip non-numeric decoration. The same "
+                "repo's issue 3652 logs target '10,\\!080' vs extracted '10080' and "
+                "'864 \\mbox{ inches}^2' vs '864', both scored 0. Distinct from the shipped "
+                "near_miss_number, which is DEFECT and about a tolerance band; this is EQUIVALENT "
+                "and about decoration, so it catches the opposite failure.",
+)
+def _numeric_format_variant(case: EvalCase) -> Optional[GradeInput]:
+    # Declared via tolerates 'numeric_format': the task treats "$29.00" and "29" as the same
+    # answer. Undeclared it declines, because a task may legitimately require a bare integer.
+    if "numeric_format" not in case.tolerates:
+        return None
+    if _family(case) in _ABSENCE_GRADERS:
+        return None
+    text = case.good.text or ""
+    nums = _NUMBER.findall(text)
+    if len(nums) != 1:
+        return None  # ambiguous which number is the answer; decline rather than guess
+    raw = nums[0]
+    try:
+        val = float(raw)
+    except ValueError:
+        return None
+    if val < 0 or val != int(val):
+        return None  # keep the decoration unambiguous: whole, non-negative values only
+    decorated = "$" + format(int(val), ",") + ".00"
+    # The variant must still read as the SAME number to a numeric parser, or it is not equivalent.
+    parsed = _gradecore_numbers(decorated)
+    if len(parsed) != 1 or parsed[0] != val:
+        return None
+    return with_text(case.good, text.replace(raw, decorated, 1))
+
+
+@operator(
+    "leading_article_variant", family="equivalent", polarity=Polarity.EQUIVALENT, field="text",
+    defect_shape="a determiner prepended to a correct answer that the task's own declared "
+                 "normalization is supposed to strip",
+    real_origin="https://github.com/EleutherAI/lm-evaluation-harness/issues/3399 : TriviaQA exact "
+                "match was lowered by leading/trailing noise the benchmark's own normalization "
+                "was meant to remove. Sits between the shipped case_variant (casing only) and "
+                "whitespace_noise (surrounding space) and is covered by neither: a determiner is "
+                "a TOKEN, so a normalizer that strips space and case still sees a different "
+                "string.",
+)
+def _leading_article_variant(case: EvalCase) -> Optional[GradeInput]:
+    # Declared via tolerates 'article'. Undeclared it declines: for many tasks "the answer" and
+    # "answer" are genuinely different strings and rejecting one is correct, not brittle.
+    if "article" not in case.tolerates:
+        return None
+    if _family(case) in _ABSENCE_GRADERS:
+        return None
+    text = (case.good.text or "").strip()
+    if not text:
+        return None
+    if text.split()[0].lower() in {"the", "a", "an"}:
+        return None  # already carries a determiner; prepending a second is not equivalent
+    return with_text(case.good, "The " + text)
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # The assembled catalog.
 # ─────────────────────────────────────────────────────────────────────────────
@@ -892,6 +1062,11 @@ CORE_OPERATORS: tuple[MutationOperator, ...] = (
     _whitespace_noise,
     _json_code_fence,
     _case_variant,
+    _identical_to_reference,
+    _malformed_structure,
+    _parser_accepted_variant,
+    _numeric_format_variant,
+    _leading_article_variant,
 )
 
 

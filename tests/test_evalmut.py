@@ -127,6 +127,8 @@ def _defect_case_for(op):
         # Base is _GARBAGE, already wrong for a content grader, so polarity never rests on the
         # suffix. contains("42") rejects the bare garbage, which is the precondition to fire.
         "append_grader_directed_suffix": EvalCase("ad", contains("42"), g(text="the total is 42")),
+        "malformed_structure": EvalCase("ms", valid_json("count"), g(text='{"count": 3}'),
+                                        tags=("json",)),
     }
     return by_id.get(op.id)
 
@@ -156,6 +158,24 @@ def test_equivalent_operator_preserves_a_normalizing_grader(op):
                                         tags=("must_comply",), tolerates=("disclaimer",)),
         "whitespace_noise": EvalCase("wn", exact("42"), GradeInput(text="42", expected="42"),
                                      tolerates=("whitespace",)),
+        # `expected` IS the canonical answer for exact, so replacing the reply with it is the
+        # reference itself; no tolerates needed, which is the point of this operator.
+        # The reference TEXT must differ from `expected` or the mutation is a structural no-op
+        # and the operator rightly declines. A number case gives that: the reply is a sentence,
+        # the canonical answer is the bare value, and both parse to the same number.
+        "identical_to_reference": EvalCase("ir", number(29, tol=0.01),
+                                           GradeInput(text="the total is 29", expected=29),
+                                           num_tol=0.01, grader_family="number"),
+        "parser_accepted_variant": EvalCase("pv", valid_json("count"),
+                                            GradeInput(text='{"count": 3, "unit": "kg"}'),
+                                            tags=("json",), tolerates=("reserialize",)),
+        "numeric_format_variant": EvalCase("nf", number(29, tol=0.01),
+                                           GradeInput(text="the total is 29", expected=29),
+                                           num_tol=0.01, tolerates=("numeric_format",),
+                                           grader_family="number"),
+        "leading_article_variant": EvalCase("la", contains("paris"),
+                                            GradeInput(text="paris", expected="paris"),
+                                            tolerates=("article",), grader_family="contains"),
         "json_code_fence": EvalCase("jf", valid_json("count"),
                                     GradeInput(text='{"count": 3}'), tags=("json",),
                                     tolerates=("fence",)),

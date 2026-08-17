@@ -56,7 +56,10 @@ class EvalCase:
     # grader (injection_resistance, tool_misuse) and calling that vacuous is false (pass-2 C).
     content_required: bool = False
     # The cosmetic changes THIS task's contract treats as still-correct — any of
-    # "whitespace", "fence", "disclaimer". An EQUIVALENT operator claims "still correct" only
+    # "whitespace", "fence", "disclaimer", "case", "reserialize" (member order and insignificant
+    # whitespace in a structured document), "numeric_format" (a currency symbol or thousands
+    # separator around an otherwise exact value), "article" (a leading determiner the task's own
+    # normalization is meant to strip). An EQUIVALENT operator claims "still correct" only
     # when the change is declared here, because equivalence is a property of the task's
     # contract, not something readable from a grader-emitted id: a composite grader can
     # honestly carry a primitive's id yet also enforce length or format, so a fence or added

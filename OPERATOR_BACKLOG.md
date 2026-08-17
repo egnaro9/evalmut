@@ -102,3 +102,29 @@ still-correct output a sound grader must still pass; catches brittle checks).
 - If a candidate can't establish polarity from ground truth (only a human could judge it),
   it does **not** belong in evalmut at all. It belongs in a rubric/LLM-judge tool, which is
   the thing evalmut is deliberately not.
+
+## Corpus B cards NOT promoted, and why (2026-08-17)
+
+Two pass-1 cards were mined, verified against real external artifacts, and deliberately left
+here. Both are blocked on something evalmut cannot currently know, and implementing either would
+mean guessing a bar, which is the exact move that manufactured this tool's own false findings.
+
+**`delimiter_in_payload`** (D). Put the character the HARNESS uses as a structural boundary inside
+a correct answer: a pack/split delimiter, a generation stop token, a whitespace class a normalizer
+is gated on. Real: confident-ai/deepeval#2917 packed DROP's multi-span gold with `DELIMITER = ","`
+and split it back at scoring time, so a gold span containing a comma (`1,000`) failed to round
+trip and a correct prediction scored 0; fixed on main to `\x1f`. Corroborated by the HF Open LLM
+Leaderboard DROP post-mortem, where `.` as the generation stop token truncated `12.25` to `12`.
+BLOCKED ON: a declared field naming the harness's own delimiters. evalmut sees a grader, not the
+pipeline around it, and there is no honest way to infer which character is structural.
+
+**`equivalent_restatement`** (E). Rewrite the answer into a provably equal form under the task's
+own semantics: an associative regroup, a commutative reorder, a display-macro swap. Real:
+EleutherAI/lm-evaluation-harness#3652 (`\frac` vs `\dfrac`, `9a + 11` vs `11 + 9a`, one
+`\boxed{3,5,7}` vs three boxes) and MMLU-Redux, where `(F∧L)∧¬C` is marked correct and the
+associatively identical `F∧L∧¬C` is marked incorrect.
+BLOCKED ON: domain semantics. Proving two expressions equal needs a parser for the answer's
+language (arithmetic, logic, LaTeX), and a generic string rewrite cannot establish equivalence.
+An operator that guessed would produce false FLAGGED findings, which is worse than the gap.
+
+Promote either the day the declaration exists, not before.
