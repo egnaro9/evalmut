@@ -22,6 +22,7 @@ from pathlib import Path
 
 from . import catalog, run
 from .report import render, render_short
+from .manifest import diff_against as manifest_diff, suite_manifest
 from .runner import MutationResult
 
 
@@ -95,6 +96,26 @@ def _cmd_run(args) -> int:
     return 1 if (serious or getattr(report, "baseline_failures", ())) else 0
 
 
+def _cmd_manifest(args) -> int:
+    """Emit, or verify against, the pinned fixture corpus for a suite."""
+    suite, _ = _load_suite(args.suite)
+    if args.check:
+        committed = json.loads(Path(args.check).read_text(encoding="utf-8"))
+        reasons = manifest_diff(committed, suite)
+        if reasons:
+            print(f"evalmut: {args.suite} is NOT the corpus pinned in {args.check}",
+                  file=sys.stderr)
+            for r in reasons:
+                print(f"  {r}", file=sys.stderr)
+            print("\n  A fixture edited after a run is a change of subject, not a change of "
+                  "code. Re-pin deliberately if the edit is intended.", file=sys.stderr)
+            return 1
+        print(f"corpus matches {args.check} ({len(suite)} cases)")
+        return 0
+    print(json.dumps(suite_manifest(suite), indent=2))
+    return 0
+
+
 def _cmd_operators(args) -> int:
     ops = catalog()
     if args.json:
@@ -128,6 +149,12 @@ def main(argv=None) -> int:
     o = sub.add_parser("operators", help="list the mined operator catalog")
     o.add_argument("--json", action="store_true")
     o.set_defaults(fn=_cmd_operators)
+
+    m = sub.add_parser("manifest", help="emit or verify a suite's pinned fixture corpus")
+    m.add_argument("suite")
+    m.add_argument("--check", metavar="FILE",
+                   help="verify the suite still matches this committed manifest (exit 1 if not)")
+    m.set_defaults(fn=_cmd_manifest)
 
     # The report uses box-drawing / warning glyphs; on a non-UTF-8 stdout (Windows cp1252,
     # a redirected CI pipe) printing them would crash with UnicodeEncodeError and lose the

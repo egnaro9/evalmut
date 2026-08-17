@@ -48,6 +48,12 @@ ARTIFACTS = (
     (("run", "external/promptfoo_suite.py", "--json", "--all"),
      "external/promptfoo_findings.json"),
     (("operators", "--json"), "docs/operators.json"),
+    # The pinned fixture corpus for each suite in the battery. Emitted the same way as every
+    # other artifact (real subprocess, exact stdout bytes) so the freshness gate covers the
+    # INPUTS as well as the results: previously a fixture could be reworded after a
+    # disappointing run and every check stayed green, because only the operators were pinned.
+    (("manifest", "demos/dogfood_gradecore.py"), "docs/dogfood_fixtures.json"),
+    (("manifest", "external/promptfoo_suite.py"), "external/promptfoo_fixtures.json"),
 )
 
 # Inputs whose bytes ARE the protocol: hashed into protocol.hashes so the

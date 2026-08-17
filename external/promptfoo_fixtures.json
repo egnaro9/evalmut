@@ -1,0 +1,171 @@
+{
+  "manifest_version": 1,
+  "case_count": 6,
+  "corpus_sha256": "7fde1db2ab430231be75fda3c8b96087dfd7a2fd9f722cfc58065daff01fc4ce",
+  "cases": [
+    {
+      "name": "approval_contains",
+      "sha256": "e83d90ba9a6eae22629383c89211e9a7c90a778ad3f907339c1668ecfc215d43",
+      "fixture": {
+        "name": "approval_contains",
+        "good": {
+          "text": "Yes, the loan application was approved.",
+          "expected": "approved",
+          "contexts": [],
+          "tool_calls": []
+        },
+        "declared": {
+          "judges": [
+            "text"
+          ],
+          "num_tol": null,
+          "content_required": false,
+          "tolerates": [],
+          "expected_trajectory": [],
+          "trajectory_threshold": null,
+          "grader_family": null,
+          "verdict_channel": [],
+          "tags": [
+            "presence_check"
+          ]
+        }
+      }
+    },
+    {
+      "name": "error_icontains",
+      "sha256": "71addf9f01b06bc3441210e6bb5273f353f89bef0a7507de3af421ddec64a119",
+      "fixture": {
+        "name": "error_icontains",
+        "good": {
+          "text": "The request completed; an error was raised in validation.",
+          "expected": "error",
+          "contexts": [],
+          "tool_calls": []
+        },
+        "declared": {
+          "judges": [
+            "text"
+          ],
+          "num_tol": null,
+          "content_required": false,
+          "tolerates": [],
+          "expected_trajectory": [],
+          "trajectory_threshold": null,
+          "grader_family": null,
+          "verdict_channel": [],
+          "tags": [
+            "presence_check"
+          ]
+        }
+      }
+    },
+    {
+      "name": "approval_regex",
+      "sha256": "c7b05073e5e807a4ffbf0803a09ea69ae78b750255faaed07e23ab2b8cd31e4d",
+      "fixture": {
+        "name": "approval_regex",
+        "good": {
+          "text": "Yes, the loan application was approved.",
+          "expected": "approved",
+          "contexts": [],
+          "tool_calls": []
+        },
+        "declared": {
+          "judges": [
+            "text"
+          ],
+          "num_tol": null,
+          "content_required": false,
+          "tolerates": [],
+          "expected_trajectory": [],
+          "trajectory_threshold": null,
+          "grader_family": null,
+          "verdict_channel": [],
+          "tags": [
+            "presence_check"
+          ]
+        }
+      }
+    },
+    {
+      "name": "api_isjson",
+      "sha256": "8451a415ece6c47c5f82d44da344e0b55c8cb6f01bfd45007417e4ffbb8f924a",
+      "fixture": {
+        "name": "api_isjson",
+        "good": {
+          "text": "{\"status\": \"ok\", \"count\": 3}",
+          "expected": null,
+          "contexts": [],
+          "tool_calls": []
+        },
+        "declared": {
+          "judges": [
+            "text"
+          ],
+          "num_tol": null,
+          "content_required": false,
+          "tolerates": [],
+          "expected_trajectory": [],
+          "trajectory_threshold": null,
+          "grader_family": "valid_json",
+          "verdict_channel": [],
+          "tags": [
+            "json"
+          ]
+        }
+      }
+    },
+    {
+      "name": "concise_wordcount",
+      "sha256": "9fc4c16b1c4f78b90e0427e2a99f19283695ce601f57097cbfe01608882d104c",
+      "fixture": {
+        "name": "concise_wordcount",
+        "good": {
+          "text": "Paris is the capital of France.",
+          "expected": "Paris",
+          "contexts": [],
+          "tool_calls": []
+        },
+        "declared": {
+          "judges": [
+            "text"
+          ],
+          "num_tol": null,
+          "content_required": true,
+          "tolerates": [],
+          "expected_trajectory": [],
+          "trajectory_threshold": null,
+          "grader_family": null,
+          "verdict_channel": [],
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "ping_equals",
+      "sha256": "fda4795703dcef1ee12cdff375e9dd2ec9e4852b2c2f03106fccebbc459273b7",
+      "fixture": {
+        "name": "ping_equals",
+        "good": {
+          "text": "PONG",
+          "expected": null,
+          "contexts": [],
+          "tool_calls": []
+        },
+        "declared": {
+          "judges": [
+            "text"
+          ],
+          "num_tol": null,
+          "content_required": true,
+          "tolerates": [],
+          "expected_trajectory": [],
+          "trajectory_threshold": null,
+          "grader_family": null,
+          "verdict_channel": [],
+          "tags": []
+        }
+      }
+    }
+  ]
+}
