@@ -1,0 +1,39 @@
+{
+  "algorithm": {
+    "canonical_json": "json.dumps(payload, sort_keys=True, separators=(',',':'), ensure_ascii=False) encoded utf-8",
+    "hash": "sha256",
+    "input": "utf8(salt) || 0x00 || canonical_json(payload)",
+    "salt": "32 random bytes, hex-encoded to 64 characters, withheld until reveal"
+  },
+  "hiding": "everyone, including the author: the selected reports do not exist yet",
+  "instance": "001",
+  "kind": "preregistered-rule",
+  "payload_location": "n/a, the payload is this rule and it is published in full",
+  "public_rule": {
+    "cutoff_utc": "2026-08-17T23:00:00Z",
+    "description": "Eval-suite defect reports that did not exist when this seal was made.",
+    "if_fewer_than_5_at_reveal": "Reveal what the rule selected, report N explicitly, and state that the transfer diagnostic is underpowered at that N rather than extending the window to reach a rounder number.",
+    "predicate": [
+      "filed strictly after the cutoff_utc below",
+      "concerns a DETERMINISTIC scorer, matcher, normalizer, threshold, aggregation or fixture",
+      "NOT an LLM-judge or rubric defect",
+      "the report or its fix identifies a concrete wrong verdict: a correct output scored wrong, or an incorrect output scored right",
+      "closed or merged, so the maintainers agreed it was a defect"
+    ],
+    "selection": "The first 5 reports satisfying the predicate, ordered by creation timestamp ascending. Ties broken by ascending issue/PR number. No discretion is exercised at reveal: the ordering is total and the count is fixed here.",
+    "sources": [
+      "github.com/promptfoo/promptfoo issues+PRs",
+      "github.com/EleutherAI/lm-evaluation-harness issues+PRs",
+      "github.com/confident-ai/deepeval issues+PRs",
+      "github.com/openai/evals issues+PRs",
+      "github.com/huggingface/lighteval issues+PRs"
+    ]
+  },
+  "reveal_after": "2026-11-17",
+  "revision_boundary": "commits reachable from HEAD but not from sealed_at_commit touching evalmut/operators.py, evalmut/operator.py, evalmut/case.py, demos/, external/",
+  "rotation": "On reveal the 5 become development operators; instance 002 is sealed BEFORE any of them is implemented.",
+  "sealed_at": "2026-08-17",
+  "sealed_at_commit": "4e63231c40ea433d7bcd833c80e5ecd322aa4df7",
+  "sha256": "7ff8b5ed46e20398a6e4bcfb1de9e155f8cd7fb1aea0b6daab3e44f1f2c36dac",
+  "version": 1
+}
