@@ -9,3 +9,6 @@ dist/
 # paper build intermediates
 paper/evalmut.html
 paper/preview.png
+
+# deepeval tool cache (pass-2 external comparison run)
+.deepeval/
