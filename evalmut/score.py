@@ -93,6 +93,15 @@ class Report:
                 if h.outcome is Outcome.MISSED and h.op_type is OperatorType.DIAGNOSTIC]
 
     @property
+    def forged_verdicts(self) -> list[MutationResult]:
+        """A LIVENESS mutation that survived: the grader honored a verdict written by the thing
+        it was grading. Strictly worse than a blind spot and listed apart from one, because the
+        instruction "fix the check" is wrong here. Nothing this grader has ever reported is
+        falsifiable while the channel stays writable, including its passes."""
+        return [h for h in self.holes
+                if h.outcome is Outcome.MISSED and h.op_type is OperatorType.LIVENESS]
+
+    @property
     def vacuous(self) -> list[MutationResult]:
         """A SANITY mutation (blank/garbage) that survived: the grader asserts nothing
         about the answer and cannot fail. The floor is broken."""

@@ -47,6 +47,12 @@ class MutationOperator:
     field: str            # which GradeInput field it perturbs (for reports/filtering)
     _apply: ApplyFn
     op_type: OperatorType = OperatorType.KILL  # what a survival means (see OperatorType)
+    # An operator carrying more than one payload class can mean different things by a survival
+    # depending on which payload fired for THIS case. inject_denylisted_tool is the case in hand:
+    # its denylist payload survival is a blind spot, its verdict-channel payload survival is a
+    # liveness failure, and reporting the second as the first would tell the reader to fix a check
+    # when the actual bug is that the check's verdict is forgeable. Left None, op_type is static.
+    _op_type_for: Optional[Callable[["EvalCase"], OperatorType]] = None
 
     def apply(self, case: "EvalCase") -> Optional[GradeInput]:
         """Mutate the case's reference input, or return None if not applicable here.
@@ -68,10 +74,15 @@ class MutationOperator:
             return None
         return mutant
 
+    def op_type_for(self, case: "EvalCase") -> OperatorType:
+        """What a survival means for THIS case. Static unless the operator declared a hook."""
+        return self._op_type_for(case) if self._op_type_for is not None else self.op_type
+
 
 def operator(id: str, *, family: str, polarity: Polarity, defect_shape: str,
              real_origin: str, field: str,
-             op_type: OperatorType = OperatorType.KILL
+             op_type: OperatorType = OperatorType.KILL,
+             op_type_for: Optional[Callable[["EvalCase"], OperatorType]] = None,
              ) -> Callable[[ApplyFn], MutationOperator]:
     """Decorator form, so an operator reads as its apply-rule with provenance attached.
 
@@ -86,6 +97,7 @@ def operator(id: str, *, family: str, polarity: Polarity, defect_shape: str,
         return MutationOperator(
             id=id, family=family, polarity=polarity, defect_shape=defect_shape,
             real_origin=real_origin, field=field, _apply=fn, op_type=op_type,
+            _op_type_for=op_type_for,
         )
     return wrap
 

@@ -152,7 +152,7 @@ def _result(case: EvalCase, grader_id: str, op: MutationOperator, outcome: Outco
         operator_id=op.id,
         family=op.family,
         polarity=op.polarity,
-        op_type=op.op_type,
+        op_type=op.op_type_for(case),
         outcome=outcome,
         real_origin=op.real_origin,
         defect_shape=op.defect_shape,

@@ -53,11 +53,19 @@ class OperatorType(str, Enum):
                    is worth knowing but is not this grader misbehaving. Add a check.
       SANITY     — a floor probe (blank / garbage output). Survival means the grader asserts
                    nothing about the answer at all — a VACUOUS check that cannot fail.
+      LIVENESS   — the mutant writes the grader's OWN verdict channel (the file it reads its
+                   result from, a reporting hook it honors, a binary it shells out to for the
+                   answer). Survival does not mean this check missed this defect. It means the
+                   check has NO LIVENESS: its verdict can be authored by the thing it is
+                   grading, so every other result it has ever reported is unfalsifiable, not
+                   merely this one. Strictly worse than a blind spot, and reported apart from
+                   it, because "fix the check" is the wrong instruction: the channel is the bug.
     """
 
     KILL = "kill"
     DIAGNOSTIC = "diagnostic"
     SANITY = "sanity"
+    LIVENESS = "liveness"
 
 
 class Outcome(str, Enum):
