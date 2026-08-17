@@ -2,9 +2,15 @@ name: evalmut
 on: [push, pull_request]
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
+        # Two ARCHITECTURES, not just two Pythons. ubuntu-latest is x86_64 and
+        # macos-14 is arm64, and the results this repo publishes are claims about
+        # deterministic scorers: a float that agrees on one and not the other is a
+        # fact worth failing on, not an environment quirk to shrug at. One OS twice
+        # cannot see that class at all.
+        os: [ubuntu-latest, macos-14]
         python-version: ["3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
