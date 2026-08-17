@@ -135,8 +135,32 @@ class Commitment:
 def seal(payload, *, instance: str, kind: str, sealed_at: str, sealed_at_commit: str,
          hiding: str, reveal_after: str, revision_boundary: str, rotation: str,
          payload_location: str, public_rule: dict | None = None,
-         salt: str | None = None) -> tuple[Commitment, str]:
-    """Produce (public commitment, salt). The salt is the caller's to withhold until reveal."""
+         salt: str | None = None, now_utc: str | None = None) -> tuple[Commitment, str]:
+    """Produce (public commitment, salt). The salt is the caller's to withhold until reveal.
+
+    A KIND_RULE seal REQUIRES `now_utc` and refuses a cutoff that is not strictly in the future.
+    Instance 001 shipped with a cutoff sixteen minutes in the past, which opened a retroactive
+    window in which a qualifying report could already have existed. Nothing was filed in it, so
+    the set was unaffected, but the hiding claim stopped being guaranteed by construction and
+    became an empirical check. That defect was recorded in a note; a note is a promise, and this
+    is the gate that keeps it."""
+    if kind == KIND_RULE:
+        cutoff = (payload or {}).get("cutoff_utc")
+        if not cutoff:
+            raise HoldoutError(
+                "a preregistered rule must state a cutoff_utc. Without one there is no moment "
+                "before which the material provably did not exist, which is the only thing that "
+                "makes a rule hiding rather than merely binding.")
+        if not now_utc:
+            raise HoldoutError(
+                "sealing a rule requires now_utc so the cutoff can be checked against it. "
+                "Refusing to seal a rule whose futurity nobody verified.")
+        if cutoff <= now_utc:
+            raise HoldoutError(
+                f"cutoff_utc {cutoff} is not strictly after the sealing moment {now_utc}. That "
+                "opens a retroactive window in which qualifying material may already exist, so "
+                "the seal would be binding but not hiding while claiming otherwise. Move the "
+                "cutoff past the seal.")
     s = salt or new_salt()
     c = Commitment(version=COMMITMENT_VERSION, instance=instance, kind=kind,
                    sha256=digest(payload, s), sealed_at=sealed_at,

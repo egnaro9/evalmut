@@ -257,3 +257,58 @@ def test_an_unrecognised_field_is_refused(commitment):
     with pytest.raises(H.HoldoutError) as e:
         H.Commitment.from_json(json.dumps(d))
     assert "unrecognised fields" in str(e.value)
+
+
+# ---------------------------------------------------------------- the 001 defect cannot recur
+
+_RULE = {"cutoff_utc": "2026-12-01T00:00:00Z", "predicate": ["x"]}
+_ARGS = dict(instance="test", kind=None, sealed_at="2026-08-17", sealed_at_commit="abc123",
+             hiding="everyone", reveal_after="2027-01-01", revision_boundary="paths",
+             rotation="next", payload_location="n/a")
+
+
+def test_a_rule_with_a_past_cutoff_is_refused():
+    """Instance 001's defect, turned into a gate.
+
+    Its cutoff sat sixteen minutes before the seal, which opened a retroactive window and reduced
+    the hiding claim from a property of construction to an empirical check. Nothing was filed in
+    the window, but the next instance must not inherit the shape."""
+    with pytest.raises(H.HoldoutError) as e:
+        H.seal({"cutoff_utc": "2026-08-17T23:00:00Z"}, **{**_ARGS, "kind": H.KIND_RULE},
+               now_utc="2026-08-17T23:16:23Z")
+    assert "not strictly after the sealing moment" in str(e.value)
+
+
+def test_a_rule_sealed_without_a_checked_now_is_refused():
+    with pytest.raises(H.HoldoutError) as e:
+        H.seal(_RULE, **{**_ARGS, "kind": H.KIND_RULE})
+    assert "nobody verified" in str(e.value)
+
+
+def test_a_rule_with_no_cutoff_is_refused():
+    with pytest.raises(H.HoldoutError) as e:
+        H.seal({"predicate": ["x"]}, **{**_ARGS, "kind": H.KIND_RULE},
+               now_utc="2026-08-17T23:16:23Z")
+    assert "must state a cutoff_utc" in str(e.value)
+
+
+def test_a_future_cutoff_seals_normally():
+    c, salt = H.seal(_RULE, **{**_ARGS, "kind": H.KIND_RULE}, now_utc="2026-08-17T23:16:23Z")
+    H.verify(c, _RULE, salt)
+
+
+def test_notes_record_the_discarded_draft_and_the_cutoff_defect():
+    """The audit trail is part of the artifact, not a courtesy.
+
+    Each assertion is one statement a reader needs in order to size the limitation themselves
+    rather than take the summary's word for it."""
+    notes = " ".join((ROOT / "holdout" / "NOTES-001.md").read_text().split())
+    assert "bdc664ef" in notes and "7ff8b5ed" in notes
+    assert "no eligible candidate selected" in notes
+    assert "16-minute retroactive window" in notes
+    assert "not guaranteed by construction" in notes
+    assert "empirical observation, not a retroactive construction guarantee" in notes
+    assert "byte-identical to its state at `70d9d57`" in notes
+    assert "There is no third digest" in notes
+    assert "requires a checked `now_utc`" in notes
+    assert "strictly later than that instant" in notes
