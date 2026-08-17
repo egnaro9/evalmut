@@ -18,12 +18,12 @@
   "version": {
    "evalmut": "0.1.0",
    "gradecore": "0.10.0",
-   "suites_commit": "7aff502"
+   "suites_commit": "092fc02"
   }
  },
  "protocol": {
   "issuer": "egnaro9/evalmut",
-  "issuer_commit": "7aff502",
+  "issuer_commit": "092fc02",
   "task": "mined-operator mutation battery over the two committed suites",
   "hashes": {
    "dogfood_suite_sha256": "a91270baa80366b749c15ac9e131aaa2f4ec9802d0534d56c35fcb433f42aa68",
@@ -34,6 +34,10 @@
   "control_policy": "baseline-green enforced per case (a grader failing or crashing on its own reference output is excluded and reported by name, never silently scored); EQUIVALENT mutations are graded beside DEFECT mutations, so a grader that fails everything reads brittle, not vigilant; SANITY probes (blank/garbage) expose graders that cannot fail; a grader that crashes on a defect is surfaced beside the blind spots, never scored as a catch"
  },
  "evidence": [
+  {
+   "path": "dogfood_fixtures.json",
+   "sha256": "e127c7389a2a3e2ce84b2c9be30cfc950edd7502f74e25d1d1705261a7401931"
+  },
   {
    "path": "dogfood_gradecore.json",
    "sha256": "b6e230c0210b2c6332f720eaa3aa48d3a451e23b71ecaacd2d8bc7f80f6a1554"
@@ -53,6 +57,10 @@
   {
    "path": "promptfoo_findings.txt",
    "sha256": "64e7581765ae2b7fae810cc1e45eed42c920b37102bd18c8eba454372dc7b668"
+  },
+  {
+   "path": "promptfoo_fixtures.json",
+   "sha256": "0879dada0e0eab5881f62aa47402b7e3c8511a35e9e29f09a5ee1feed5b202e1"
   }
  ],
  "results": {
@@ -128,10 +136,10 @@
   ]
  },
  "replay": {
-  "issuer_commit": "7aff502",
+  "issuer_commit": "092fc02",
   "commands": [
    "git clone https://github.com/egnaro9/evalmut issuer",
-   "git -C issuer checkout 7aff502",
+   "git -C issuer checkout 092fc02",
    "python -m pip install gradecore==0.10.0 ./issuer",
    "( cd issuer && python emit_vac.py )",
    "for f in dogfood_gradecore.txt dogfood_gradecore.json operators.json promptfoo_findings.txt promptfoo_findings.json vac.json; do cmp issuer/vac/$f $f || exit 1; done"

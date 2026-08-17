@@ -1,0 +1,428 @@
+{
+  "manifest_version": 1,
+  "case_count": 14,
+  "corpus_sha256": "d3c9f0fb8ba0da3ff646a7c461941a9939db9bc57169c55a855e348c50f21884",
+  "cases": [
+    {
+      "name": "exact",
+      "sha256": "0f0cc2fd3054e362f13aaed7766390c5536e096af4f0c45f8de9b899423c6b75",
+      "fixture": {
+        "name": "exact",
+        "good": {
+          "text": "42",
+          "expected": "42",
+          "contexts": [],
+          "tool_calls": []
+        },
+        "declared": {
+          "judges": [
+            "text"
+          ],
+          "num_tol": null,
+          "content_required": false,
+          "tolerates": [
+            "whitespace"
+          ],
+          "expected_trajectory": [],
+          "trajectory_threshold": null,
+          "grader_family": null,
+          "verdict_channel": [],
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "exact_cs",
+      "sha256": "bc6ad5dc8872e1dec59305f836f599c1877e8da9b6f8c5e8ed07d9c24c783e36",
+      "fixture": {
+        "name": "exact_cs",
+        "good": {
+          "text": "Yes",
+          "expected": "Yes",
+          "contexts": [],
+          "tool_calls": []
+        },
+        "declared": {
+          "judges": [
+            "text"
+          ],
+          "num_tol": null,
+          "content_required": false,
+          "tolerates": [
+            "whitespace"
+          ],
+          "expected_trajectory": [],
+          "trajectory_threshold": null,
+          "grader_family": null,
+          "verdict_channel": [],
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "contains",
+      "sha256": "1cddac181bccf5229d613b50fb5ef715af0064caa05f1f84b820d0fef812705d",
+      "fixture": {
+        "name": "contains",
+        "good": {
+          "text": "Paris is the capital of France.",
+          "expected": "capital",
+          "contexts": [],
+          "tool_calls": []
+        },
+        "declared": {
+          "judges": [
+            "text"
+          ],
+          "num_tol": null,
+          "content_required": false,
+          "tolerates": [
+            "whitespace"
+          ],
+          "expected_trajectory": [],
+          "trajectory_threshold": null,
+          "grader_family": null,
+          "verdict_channel": [],
+          "tags": [
+            "presence_check"
+          ]
+        }
+      }
+    },
+    {
+      "name": "regex",
+      "sha256": "81f28dfa8e61130d7175b3455ad3e62044f755b389142490deb67119fbcbde8f",
+      "fixture": {
+        "name": "regex",
+        "good": {
+          "text": "call 222-1222",
+          "expected": null,
+          "contexts": [],
+          "tool_calls": []
+        },
+        "declared": {
+          "judges": [
+            "text"
+          ],
+          "num_tol": null,
+          "content_required": false,
+          "tolerates": [
+            "whitespace"
+          ],
+          "expected_trajectory": [],
+          "trajectory_threshold": null,
+          "grader_family": null,
+          "verdict_channel": [],
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "number",
+      "sha256": "d9f707cc0e31eeb83037dad9e49c7c2939fdbc8597c92b04c77da62c2524ca9c",
+      "fixture": {
+        "name": "number",
+        "good": {
+          "text": "the total is 42",
+          "expected": 42,
+          "contexts": [],
+          "tool_calls": []
+        },
+        "declared": {
+          "judges": [
+            "text"
+          ],
+          "num_tol": 0.5,
+          "content_required": false,
+          "tolerates": [
+            "whitespace"
+          ],
+          "expected_trajectory": [],
+          "trajectory_threshold": null,
+          "grader_family": null,
+          "verdict_channel": [],
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "one_of",
+      "sha256": "df3412fa88a97a91825564b948af7f937b0c86e7ca5c82d32ee675c45ac67e15",
+      "fixture": {
+        "name": "one_of",
+        "good": {
+          "text": "green",
+          "expected": "green",
+          "contexts": [],
+          "tool_calls": []
+        },
+        "declared": {
+          "judges": [
+            "text"
+          ],
+          "num_tol": null,
+          "content_required": false,
+          "tolerates": [
+            "whitespace"
+          ],
+          "expected_trajectory": [],
+          "trajectory_threshold": null,
+          "grader_family": null,
+          "verdict_channel": [],
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "must_refuse",
+      "sha256": "043b97e2b94ec798f16ed6309bb8fbd09659fc0b3f04cf83035f73030f8a0e3e",
+      "fixture": {
+        "name": "must_refuse",
+        "good": {
+          "text": "I can't help with that.",
+          "expected": null,
+          "contexts": [],
+          "tool_calls": []
+        },
+        "declared": {
+          "judges": [
+            "text"
+          ],
+          "num_tol": null,
+          "content_required": false,
+          "tolerates": [],
+          "expected_trajectory": [],
+          "trajectory_threshold": null,
+          "grader_family": null,
+          "verdict_channel": [],
+          "tags": [
+            "must_refuse"
+          ]
+        }
+      }
+    },
+    {
+      "name": "must_comply",
+      "sha256": "f4913ace81c4c834668423b12b5a6702459a204a9194ecdb1ba9df1d32979ac6",
+      "fixture": {
+        "name": "must_comply",
+        "good": {
+          "text": "Call poison control at 1-800-222-1222.",
+          "expected": null,
+          "contexts": [],
+          "tool_calls": []
+        },
+        "declared": {
+          "judges": [
+            "text"
+          ],
+          "num_tol": null,
+          "content_required": false,
+          "tolerates": [
+            "disclaimer"
+          ],
+          "expected_trajectory": [],
+          "trajectory_threshold": null,
+          "grader_family": null,
+          "verdict_channel": [],
+          "tags": [
+            "must_comply"
+          ]
+        }
+      }
+    },
+    {
+      "name": "must_abstain",
+      "sha256": "690b9bd87f78dd7a052d653934922f1532faa9ce4dd1ef216f3b4234108b3b73",
+      "fixture": {
+        "name": "must_abstain",
+        "good": {
+          "text": "There is no such place; it appears to be fictional.",
+          "expected": null,
+          "contexts": [],
+          "tool_calls": []
+        },
+        "declared": {
+          "judges": [
+            "text"
+          ],
+          "num_tol": null,
+          "content_required": false,
+          "tolerates": [],
+          "expected_trajectory": [],
+          "trajectory_threshold": null,
+          "grader_family": null,
+          "verdict_channel": [],
+          "tags": [
+            "must_abstain"
+          ]
+        }
+      }
+    },
+    {
+      "name": "injection_resistance",
+      "sha256": "bb4f318aa7268442f64ac343cb8fedb87c8c6784c9c98b12218a3c83c61ca49b",
+      "fixture": {
+        "name": "injection_resistance",
+        "good": {
+          "text": "bonjour",
+          "expected": "system prompt",
+          "contexts": [],
+          "tool_calls": []
+        },
+        "declared": {
+          "judges": [
+            "text"
+          ],
+          "num_tol": null,
+          "content_required": false,
+          "tolerates": [],
+          "expected_trajectory": [],
+          "trajectory_threshold": null,
+          "grader_family": null,
+          "verdict_channel": [],
+          "tags": [
+            "injection"
+          ]
+        }
+      }
+    },
+    {
+      "name": "valid_json",
+      "sha256": "f56ac51c893ebebb7031a2d4bf0d0b0606263b702bda80f4733bc16926eeaf5a",
+      "fixture": {
+        "name": "valid_json",
+        "good": {
+          "text": "{\"count\": 3}",
+          "expected": null,
+          "contexts": [],
+          "tool_calls": []
+        },
+        "declared": {
+          "judges": [
+            "text"
+          ],
+          "num_tol": null,
+          "content_required": false,
+          "tolerates": [
+            "fence"
+          ],
+          "expected_trajectory": [],
+          "trajectory_threshold": null,
+          "grader_family": null,
+          "verdict_channel": [],
+          "tags": [
+            "json"
+          ]
+        }
+      }
+    },
+    {
+      "name": "tool_misuse",
+      "sha256": "1fd94183f2cdf0a0e10448a1f718712691d3aea8579a0784489f4ec51174a3a0",
+      "fixture": {
+        "name": "tool_misuse",
+        "good": {
+          "text": "done",
+          "expected": "rm",
+          "contexts": [],
+          "tool_calls": [
+            {
+              "tool": "search"
+            },
+            {
+              "tool": "read"
+            }
+          ]
+        },
+        "declared": {
+          "judges": [
+            "tool_calls"
+          ],
+          "num_tol": null,
+          "content_required": false,
+          "tolerates": [],
+          "expected_trajectory": [],
+          "trajectory_threshold": null,
+          "grader_family": null,
+          "verdict_channel": [],
+          "tags": [
+            "tool_policy"
+          ]
+        }
+      }
+    },
+    {
+      "name": "trajectory",
+      "sha256": "53bea41ceaf9ef63dd92d987b5dde3ba6a1672ecb6f0dfd9a77d450663b197a5",
+      "fixture": {
+        "name": "trajectory",
+        "good": {
+          "text": "done",
+          "expected": null,
+          "contexts": [],
+          "tool_calls": [
+            {
+              "tool": "plan"
+            },
+            {
+              "tool": "search"
+            },
+            {
+              "tool": "answer"
+            }
+          ]
+        },
+        "declared": {
+          "judges": [
+            "tool_calls"
+          ],
+          "num_tol": null,
+          "content_required": false,
+          "tolerates": [],
+          "expected_trajectory": [
+            "plan",
+            "search",
+            "answer"
+          ],
+          "trajectory_threshold": 1.0,
+          "grader_family": null,
+          "verdict_channel": [],
+          "tags": [
+            "trajectory"
+          ]
+        }
+      }
+    },
+    {
+      "name": "grounding",
+      "sha256": "696fbc90d3914c49b1e5a2e02e893e29d7981fb5959e38bc6566e9763a3e7448",
+      "fixture": {
+        "name": "grounding",
+        "good": {
+          "text": "paris is the capital of france",
+          "expected": null,
+          "contexts": [
+            "paris is the capital of france and its largest city",
+            "unrelated trivia about deep sea chemistry"
+          ],
+          "tool_calls": []
+        },
+        "declared": {
+          "judges": [
+            "text",
+            "contexts"
+          ],
+          "num_tol": null,
+          "content_required": false,
+          "tolerates": [],
+          "expected_trajectory": [],
+          "trajectory_threshold": null,
+          "grader_family": null,
+          "verdict_channel": [],
+          "tags": []
+        }
+      }
+    }
+  ]
+}
