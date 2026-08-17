@@ -1,13 +1,13 @@
 {
  "vac_version": "0.1",
  "claim": {
-  "capability": "eval-suite mutation testing over a mined operator battery: gradecore's own grader-family suite scores 32/35 with 3 holes, and the committed ports of promptfoo's documented deterministic assertions score 5/11 with 6 holes \u2014 every number recomputable from committed per-mutation rows",
+  "capability": "eval-suite mutation testing over a mined operator battery: gradecore's own grader-family suite scores 40/44 with 4 holes, and the committed ports of promptfoo's documented deterministic assertions score 8/16 with 8 holes \u2014 every number recomputable from committed per-mutation rows",
   "scope": "exactly the two committed suites at the stamped commit \u2014 demos/dogfood_gradecore.py (gradecore 0.10.0's grader families, their documented scoping the ground truth) and external/promptfoo_suite.py (committed ports of promptfoo's documented deterministic assertions) \u2014 mutated by the operator battery pinned in operators.json and graded by each suite's own graders; deterministic throughout: no LLM judge, no sampling, no network, no clock",
   "limitations": [
    "injected defects are author-chosen: every operator is mined from a real, documented failure (real_origin in operators.json) but the selection is still the issuer's \u2014 a score over this battery bounds nothing about defect classes outside it; certified-defect ground truth is reference-fleet's job, not this bundle's",
    "the promptfoo findings grade committed PORTS of promptfoo's documented deterministic assertion semantics (external/promptfoo_assertions.py), not promptfoo's shipped codebase, and say nothing about its LLM-judged assertion types",
    "the dogfood findings are claims about gradecore 0.10.0's documented grader scopings; a later gradecore that widens a grader dissolves them \u2014 replay must install gradecore==0.10.0",
-   "operators that cannot establish a mutant's polarity for a case return n/a and leave the score's denominator (150 and 79 of the rows here); the score is over applied mutations only",
+   "operators that cannot establish a mutant's polarity for a case return n/a and leave the score's denominator (165 and 86 of the rows here); the score is over applied mutations only",
    "the paper's process narrative (false-positive convergence across review passes) is not covered by this bundle: no committed artifact recomputes it",
    "byte-identity of the two rendered .txt reports requires UTF-8 output (the emitter forces PYTHONUTF8=1 in its subprocesses); the .json artifacts are ensure_ascii and locale-immune"
   ]
@@ -18,12 +18,12 @@
   "version": {
    "evalmut": "0.1.0",
    "gradecore": "0.10.0",
-   "suites_commit": "6567e75"
+   "suites_commit": "ceaf1f7"
   }
  },
  "protocol": {
   "issuer": "egnaro9/evalmut",
-  "issuer_commit": "6567e75",
+  "issuer_commit": "ceaf1f7",
   "task": "mined-operator mutation battery over the two committed suites",
   "hashes": {
    "dogfood_suite_sha256": "a91270baa80366b749c15ac9e131aaa2f4ec9802d0534d56c35fcb433f42aa68",
@@ -36,49 +36,49 @@
  "evidence": [
   {
    "path": "dogfood_gradecore.json",
-   "sha256": "29d3415a6cebbe3fdc3a73a11d8da9ea47f457a7f9350956edd19002f69971c3"
+   "sha256": "b6e230c0210b2c6332f720eaa3aa48d3a451e23b71ecaacd2d8bc7f80f6a1554"
   },
   {
    "path": "dogfood_gradecore.txt",
-   "sha256": "b6863732bce748554455d3f8bd138c848f4ac47a3fd144f3c1bb694739feeaff"
+   "sha256": "0048644798e50633843c5bd1804250eee57656780d44f97ed84dbdce5513a191"
   },
   {
    "path": "operators.json",
-   "sha256": "5fb707a1b583d8f321cf45c6e9de2a1f831c6483417d2dae9af38424d5238831"
+   "sha256": "4de1da971c6e4cc2ff97a87adae98894315b59301e813ed1561e1d91a59ae021"
   },
   {
    "path": "promptfoo_findings.json",
-   "sha256": "c5e5e787e9613631147ea38329b17e991ede62e2b6699ac7c4f9aa82d3a3ef9d"
+   "sha256": "b71d7de9174c07a4b4170bd5ec4adb3328b331028b81caa627ffcc0b743db37e"
   },
   {
    "path": "promptfoo_findings.txt",
-   "sha256": "6715229a6e496d99236ea06a207f225a8a16391d58c6373d82dfd14a09b9baa4"
+   "sha256": "64e7581765ae2b7fae810cc1e45eed42c920b37102bd18c8eba454372dc7b668"
   }
  ],
  "results": {
   "summary": {
    "dogfood_gradecore": {
-    "score_3": 0.914,
-    "caught": 32,
-    "applied": 35,
-    "na": 150,
+    "score_3": 0.909,
+    "caught": 40,
+    "applied": 44,
+    "na": 165,
     "holes": {
-     "blind": 1,
-     "coverage_gap": 2
-    }
-   },
-   "promptfoo_ports": {
-    "score_3": 0.455,
-    "caught": 5,
-    "applied": 11,
-    "na": 79,
-    "holes": {
-     "vacuous": 2,
      "blind": 2,
      "coverage_gap": 2
     }
    },
-   "operators": 18
+   "promptfoo_ports": {
+    "score_3": 0.5,
+    "caught": 8,
+    "applied": 16,
+    "na": 86,
+    "holes": {
+     "vacuous": 2,
+     "blind": 4,
+     "coverage_gap": 2
+    }
+   },
+   "operators": 20
   },
   "checks": [
    {
@@ -87,20 +87,20 @@
     "catalog": "operators.json",
     "render": "dogfood_gradecore.txt",
     "expect": {
-     "caught": 32,
-     "missed": 3,
+     "caught": 40,
+     "missed": 4,
      "flagged": 0,
      "error": 0,
-     "na": 150,
-     "applied": 35,
-     "results": 185,
-     "score_3": 0.914,
+     "na": 165,
+     "applied": 44,
+     "results": 209,
+     "score_3": 0.909,
      "vacuous": 0,
-     "blind": 1,
+     "blind": 2,
      "brittle": 0,
      "coverage_gap": 2,
-     "operators_exercised": 18,
-     "operators": 18
+     "operators_exercised": 20,
+     "operators": 20
     }
    },
    {
@@ -109,29 +109,29 @@
     "catalog": "operators.json",
     "render": "promptfoo_findings.txt",
     "expect": {
-     "caught": 5,
-     "missed": 6,
+     "caught": 8,
+     "missed": 8,
      "flagged": 0,
      "error": 0,
-     "na": 79,
-     "applied": 11,
-     "results": 90,
-     "score_3": 0.455,
+     "na": 86,
+     "applied": 16,
+     "results": 102,
+     "score_3": 0.5,
      "vacuous": 2,
-     "blind": 2,
+     "blind": 4,
      "brittle": 0,
      "coverage_gap": 2,
-     "operators_exercised": 15,
-     "operators": 18
+     "operators_exercised": 17,
+     "operators": 20
     }
    }
   ]
  },
  "replay": {
-  "issuer_commit": "6567e75",
+  "issuer_commit": "ceaf1f7",
   "commands": [
    "git clone https://github.com/egnaro9/evalmut issuer",
-   "git -C issuer checkout 6567e75",
+   "git -C issuer checkout ceaf1f7",
    "python -m pip install gradecore==0.10.0 ./issuer",
    "( cd issuer && python emit_vac.py )",
    "for f in dogfood_gradecore.txt dogfood_gradecore.json operators.json promptfoo_findings.txt promptfoo_findings.json vac.json; do cmp issuer/vac/$f $f || exit 1; done"

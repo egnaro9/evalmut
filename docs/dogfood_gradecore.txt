@@ -1,14 +1,18 @@
 ────────────────────────────────────────────────────────────────────────
   evalmut — does your eval actually check anything?
 ────────────────────────────────────────────────────────────────────────
-  mutation score    91.4%   (32 caught / 35 applied; 150 n/a)
-  holes            3  (1 blind, 2 coverage-gap)
+  mutation score    90.9%   (40 caught / 44 applied; 165 n/a)
+  holes            4  (2 blind, 2 coverage-gap)
 
   BLIND SPOTS — a real defect shipped green; the check is present and broken
     • contains / contains
         mutation : keyword_present_but_negated — the checked keyword appears, but in a context that means the opposite
         grader   : passed the mutant  (needs all of ['capital'])
         mined from: a CI proof-gate: greps its own run transcript for the token it should execute; the block message contains that token, so mentioning it passes the gate without running it
+    • contains / contains
+        mutation : spurious_cue_token_insert — the grepped keyword carried by text that does none of the work the task asks for — the cue is the entire signal the check consumes
+        grader   : passed the mutant  (needs all of ['capital'])
+        mined from: https://arxiv.org/abs/1907.07355 (Niven & Kao, ACL 2019) : on ARCT, BERT reached 77% peak / 71.2% median against untrained humans at 0.798, and the authors attribute the signal to the unigram 'not' (61% productivity, 64% coverage). Partial-input probes that never see the argument still score: warrant-only 71%, reason+warrant 75%. The control is the hard ground truth: mirroring every instance so the cue distribution is symmetric drops the IDENTICAL model to peak 53.3% / median 50.5%, i.e. chance. ARCT's accuracy metric scored a cue-matcher within 3 points of untrained humans.
 
   COVERAGE GAPS — no check guards this shape (a missing grader, not a broken one)
     • valid_json / valid_json
