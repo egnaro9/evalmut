@@ -44,76 +44,104 @@ BUCKETS = {
 ORDER = ["forged", "vacuous", "blind", "error", "brittle", "coverage_gap"]
 
 _CSS = """
-:root{--bg:#fbfaf8;--panel:#fff;--ink:#1c1b19;--ink2:#54514c;--ink3:#8b8781;--rule:#e3e0da;
---accent:#7a4b2a;--hot:#8f2f1d;--warn:#8a6d1f;--cool:#3d5a4a;--mono:ui-monospace,SFMono-Regular,
-Menlo,Consolas,monospace}
-@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#141311;--panel:#1c1a18;
---ink:#eeebe6;--ink2:#b3aea6;--ink3:#7d786f;--rule:#302c28;--accent:#d99a63;--hot:#e0785f;
---warn:#d6b44e;--cool:#7fb595}}
-:root[data-theme=dark]{--bg:#141311;--panel:#1c1a18;--ink:#eeebe6;--ink2:#b3aea6;--ink3:#7d786f;
---rule:#302c28;--accent:#d99a63;--hot:#e0785f;--warn:#d6b44e;--cool:#7fb595}
+/* The suite's house tokens, copied verbatim from egnaro9.github.io rather than reinvented.
+   These pages are panels of one system and looked like four different products; the point of
+   the shell is that a reader recognises the second panel from having seen the first.
+   Copied, not fetched: a linked stylesheet would give the page a network dependency and it has
+   to open from a file:// path on a machine with no network. Identity without a fetch. */
+:root{color-scheme:dark light;
+--ink:#0e1316;--panel:#141c21;--raised:#1b252b;
+--line:rgba(255,255,255,.09);--line-2:rgba(255,255,255,.05);
+--fg:#dae2e4;--fg-dim:#8a989e;--fg-faint:#5e6c72;
+--amber:#f2a53c;--amber-soft:rgba(242,165,60,.13);--amber-line:rgba(242,165,60,.34);
+--teal:#48c1ac;--teal-soft:rgba(72,193,172,.12);--teal-line:rgba(72,193,172,.34);
+--mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
+--sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+--maxw:880px}
+@media (prefers-color-scheme:light){:root:not([data-theme=dark]){
+--ink:#e9edee;--panel:#f4f6f6;--raised:#ffffff;
+--line:rgba(12,26,32,.12);--line-2:rgba(12,26,32,.07);
+--fg:#131c20;--fg-dim:#4d5a60;--fg-faint:#7c888d;
+--amber:#b7761a;--amber-soft:rgba(200,128,26,.12);--amber-line:rgba(200,128,26,.4);
+--teal:#1c8f7d;--teal-soft:rgba(28,143,125,.1);--teal-line:rgba(28,143,125,.4)}}
+:root[data-theme=light]{--ink:#e9edee;--panel:#f4f6f6;--raised:#ffffff;
+--line:rgba(12,26,32,.12);--fg:#131c20;--fg-dim:#4d5a60;--fg-faint:#7c888d;
+--amber:#b7761a;--amber-soft:rgba(200,128,26,.12);--amber-line:rgba(200,128,26,.4);
+--teal:#1c8f7d;--teal-soft:rgba(28,143,125,.1);--teal-line:rgba(28,143,125,.4)}
+/* severity is its own scale, not the brand accent: amber is identity, these are state */
+:root{--hot:#e0785f;--warn:#f2a53c;--cool:#48c1ac}
+@media (prefers-color-scheme:light){:root:not([data-theme=dark]){--hot:#a8412c;--warn:#b7761a;--cool:#1c8f7d}}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 system-ui,-apple-system,
-"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
-.wrap{max-width:60rem;margin:0 auto;padding:2.5rem 1.25rem 4rem}
-h1{font-size:1.05rem;font-weight:600;letter-spacing:.02em;margin:0 0 .15rem;color:var(--ink2)}
-.sub{color:var(--ink3);font-size:.82rem;margin:0 0 2rem}
+body{margin:0;background:var(--ink);color:var(--fg);font:15px/1.55 var(--sans);
+-webkit-font-smoothing:antialiased}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:2.25rem 1.25rem 4rem}
+.shell{display:flex;align-items:baseline;gap:.75rem;flex-wrap:wrap;
+border-bottom:1px solid var(--line);padding-bottom:.8rem;margin-bottom:1.6rem}
+.shell .mark{font-family:var(--mono);font-size:.82rem;letter-spacing:.02em;color:var(--amber);
+font-weight:600}
+.shell .sys{font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;
+color:var(--fg-faint)}
+.shell nav{margin-left:auto;display:flex;gap:.9rem;flex-wrap:wrap}
+.shell nav a{font-family:var(--mono);font-size:.72rem;color:var(--fg-faint);text-decoration:none;
+border-bottom:1px solid transparent;padding-bottom:1px}
+.shell nav a:hover{color:var(--amber);border-bottom-color:var(--amber-line)}
+.shell nav a[aria-current]{color:var(--fg);border-bottom-color:var(--amber)}
+h1{font-size:1.05rem;font-weight:600;letter-spacing:.02em;margin:0 0 .15rem;color:var(--fg-dim)}
+.sub{color:var(--fg-faint);font-size:.82rem;margin:0 0 1.9rem}
 .verdict{font-size:1.95rem;line-height:1.2;font-weight:650;letter-spacing:-.02em;margin:0 0 .5rem}
 .verdict .n{color:var(--hot)}
 .verdict.clean .n{color:var(--cool)}
-.context{color:var(--ink2);font-size:.92rem;margin:0 0 2.25rem;max-width:46rem}
-.context b{color:var(--ink);font-weight:600}
+.context{color:var(--fg-dim);font-size:.92rem;margin:0 0 2rem;max-width:46rem}
+.context b{color:var(--fg);font-weight:600}
 .tally{display:flex;flex-wrap:wrap;gap:.4rem 1.6rem;font-family:var(--mono);font-size:.8rem;
-color:var(--ink3);border-top:1px solid var(--rule);padding-top:.9rem;margin-bottom:2.5rem;
+color:var(--fg-faint);border-top:1px solid var(--line);padding-top:.9rem;margin-bottom:2.25rem;
 font-variant-numeric:tabular-nums}
-.tally b{color:var(--ink);font-weight:600}
-h2{font-size:.72rem;text-transform:uppercase;letter-spacing:.13em;color:var(--ink3);
-font-weight:600;margin:2.5rem 0 .9rem;border-bottom:1px solid var(--rule);padding-bottom:.5rem}
-.hole{background:var(--panel);border:1px solid var(--rule);border-left:3px solid var(--kind);
+.tally b{color:var(--fg);font-weight:600}
+h2{font-size:.72rem;text-transform:uppercase;letter-spacing:.13em;color:var(--fg-faint);
+font-weight:600;margin:2.25rem 0 .9rem;border-bottom:1px solid var(--line);padding-bottom:.5rem}
+.hole{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--kind);
 border-radius:3px;padding:1rem 1.1rem;margin-bottom:.7rem}
 .hkind{display:inline-flex;align-items:center;gap:.45rem;font-family:var(--mono);font-size:.7rem;
 text-transform:uppercase;letter-spacing:.1em;color:var(--kind);font-weight:700}
 .hkind .g{display:inline-grid;place-items:center;width:1.05rem;height:1.05rem;border-radius:2px;
-background:var(--kind);color:var(--panel);font-size:.66rem}
-.hmeans{color:var(--ink3);font-size:.78rem;margin:.45rem 0 .8rem;text-transform:none;
+background:var(--kind);color:var(--ink);font-size:.66rem}
+.hmeans{color:var(--fg-faint);font-size:.78rem;margin:.45rem 0 .8rem;text-transform:none;
 letter-spacing:0;font-weight:400}
-.hid{font-family:var(--mono);font-size:.92rem;color:var(--ink);font-weight:600;
-word-break:break-word}
-.hcase{font-family:var(--mono);font-size:.76rem;color:var(--ink3);margin:.2rem 0 .75rem}
-.shape{color:var(--ink2);font-size:.88rem;margin:0 0 .8rem}
-.mut{font-family:var(--mono);font-size:.76rem;background:var(--bg);border:1px solid var(--rule);
-border-radius:2px;padding:.5rem .6rem;color:var(--ink2);overflow-x:auto;white-space:pre-wrap;
+.hid{font-family:var(--mono);font-size:.92rem;color:var(--fg);font-weight:600;word-break:break-word}
+.hcase{font-family:var(--mono);font-size:.76rem;color:var(--fg-faint);margin:.2rem 0 .75rem}
+.shape{color:var(--fg-dim);font-size:.88rem;margin:0 0 .8rem}
+.mut{font-family:var(--mono);font-size:.76rem;background:var(--ink);border:1px solid var(--line);
+border-radius:2px;padding:.5rem .6rem;color:var(--fg-dim);overflow-x:auto;white-space:pre-wrap;
 word-break:break-word;margin:0 0 .8rem}
-.mut .lbl{color:var(--ink3);display:block;font-size:.66rem;text-transform:uppercase;
+.mut .lbl{color:var(--fg-faint);display:block;font-size:.66rem;text-transform:uppercase;
 letter-spacing:.1em;margin-bottom:.3rem}
-details.prov{border-top:1px dashed var(--rule);padding-top:.6rem}
-details.prov summary{cursor:pointer;color:var(--ink3);font-size:.74rem;letter-spacing:.04em}
-details.prov summary:hover{color:var(--accent)}
-.prov p{color:var(--ink2);font-size:.8rem;line-height:1.6;margin:.6rem 0 0;word-break:break-word}
-.fix{color:var(--ink2);font-size:.8rem;margin:.6rem 0 0}
-.fix b{color:var(--ink)}
-.none{color:var(--ink3);font-size:.88rem;font-style:italic}
+details.prov{border-top:1px dashed var(--line);padding-top:.6rem}
+details.prov summary{cursor:pointer;color:var(--fg-faint);font-size:.74rem;letter-spacing:.04em}
+details.prov summary:hover{color:var(--amber)}
+.prov p{color:var(--fg-dim);font-size:.8rem;line-height:1.6;margin:.6rem 0 0;word-break:break-word}
+.fix{color:var(--fg-dim);font-size:.8rem;margin:.6rem 0 0}
+.fix b{color:var(--fg)}
+.none{color:var(--fg-faint);font-size:.88rem;font-style:italic}
 table{width:100%;border-collapse:collapse;font-size:.78rem;font-family:var(--mono)}
-th{text-align:left;color:var(--ink3);font-weight:600;font-size:.68rem;text-transform:uppercase;
-letter-spacing:.09em;border-bottom:1px solid var(--rule);padding:.45rem .5rem}
-td{padding:.4rem .5rem;border-bottom:1px solid var(--rule);color:var(--ink2)}
+th{text-align:left;color:var(--fg-faint);font-weight:600;font-size:.68rem;text-transform:uppercase;
+letter-spacing:.09em;border-bottom:1px solid var(--line);padding:.45rem .5rem}
+td{padding:.4rem .5rem;border-bottom:1px solid var(--line-2);color:var(--fg-dim)}
 td.o{font-weight:600}
 .wrapx{overflow-x:auto}
 /* Scriptless filter: radio inputs plus sibling selectors. The page must open from a file:// path
    on a machine with no network, and executable markup is the one thing this renderer will not
-   ship, so the interaction is CSS. Costs a little verbosity, keeps the property the tests
-   enforce. (The comment avoids naming that tag literally, because the self-contained test scans
-   for the string and a comment describing the rule would violate it.) */
-.filt{display:flex;flex-wrap:wrap;gap:.4rem;margin:0 0 1.5rem}
+   ship, so the interaction is CSS. (The comment avoids naming that tag literally, because the
+   self-contained test scans for the string.) */
+.filt{display:flex;flex-wrap:wrap;gap:.4rem;margin:0 0 1.4rem}
 .filt input{position:absolute;opacity:0;width:0;height:0}
-.filt label{font-family:var(--mono);font-size:.72rem;letter-spacing:.04em;color:var(--ink3);
-border:1px solid var(--rule);border-radius:999px;padding:.25rem .7rem;cursor:pointer;
+.filt label{font-family:var(--mono);font-size:.72rem;letter-spacing:.04em;color:var(--fg-faint);
+border:1px solid var(--line);border-radius:999px;padding:.25rem .7rem;cursor:pointer;
 background:var(--panel);user-select:none}
-.filt label:hover{color:var(--accent);border-color:var(--accent)}
-.filt input:focus-visible+label{outline:2px solid var(--accent);outline-offset:2px}
-.filt input:checked+label{color:var(--bg);background:var(--ink);border-color:var(--ink)}
+.filt label:hover{color:var(--amber);border-color:var(--amber-line)}
+.filt input:focus-visible+label{outline:2px solid var(--amber);outline-offset:2px}
+.filt input:checked+label{color:var(--ink);background:var(--amber);border-color:var(--amber)}
 .filt b{font-variant-numeric:tabular-nums}
-footer{margin-top:3rem;padding-top:1rem;border-top:1px solid var(--rule);color:var(--ink3);
+footer{margin-top:3rem;padding-top:1rem;border-top:1px solid var(--line);color:var(--fg-faint);
 font-size:.76rem;line-height:1.6}
 """
 

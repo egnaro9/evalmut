@@ -24,6 +24,7 @@ from . import catalog, run
 from .report import render, render_short
 from .manifest import diff_against as manifest_diff, suite_manifest
 from .diff import diff_runs, headline, score_delta, summarize
+from .replay_html import render_replay_html
 from .report_html import render_diff_html, render_html
 from .runner import MutationResult
 
@@ -61,7 +62,7 @@ def _cmd_run(args) -> int:
     suite, operators = _load_suite(args.suite)
     report = run(suite, operators)
 
-    if args.json or args.html:
+    if args.json or args.html or args.replay:
         payload = {
             "score": report.score,
             "tally": dataclasses.asdict(report.total),
@@ -75,10 +76,13 @@ def _cmd_run(args) -> int:
             "baseline_failures": [str(b) for b in getattr(report, "baseline_failures", ())],
             "results": [_result_dict(r) for r in report.results] if args.all else None,
         }
+        if args.replay:
+            Path(args.replay).write_text(render_replay_html(payload), encoding="utf-8")
+            print(f"wrote {args.replay}", file=sys.stderr)
         if args.html:
             Path(args.html).write_text(render_html(payload), encoding="utf-8")
             print(f"wrote {args.html}", file=sys.stderr)
-        else:
+        elif args.json:
             print(json.dumps(payload, indent=2))
     elif args.short:
         print(render_short(report))
@@ -179,6 +183,8 @@ def main(argv=None) -> int:
     r.add_argument("--short", action="store_true", help="one line, for CI")
     r.add_argument("--all", action="store_true", help="(with --json) include every result, not just holes")
     r.add_argument("-v", "--verbose", action="store_true", help="per-grader table + mutant previews")
+    r.add_argument("--replay", metavar="FILE",
+                   help="write a watchable step-by-step replay of this run (carries script)")
     r.add_argument("--html", metavar="FILE",
                    help="write a standalone read-only HTML rendering of this run")
     r.set_defaults(fn=_cmd_run)

@@ -101,9 +101,11 @@ def test_all_three_theme_states_are_defined():
     the other theme's ground."""
     out = render_html(CLEAN)
     assert ":root{" in out
-    assert "prefers-color-scheme:dark" in out
-    assert "[data-theme=dark]" in out
-    assert "--bg:" in out.split("prefers-color-scheme")[0], "bare :root must define the palette"
+    assert "prefers-color-scheme:light" in out
+    assert "[data-theme=light]" in out
+    # The bare :root carries the full dark palette; the media block only re-points tokens.
+    assert "--ink:" in out.split("prefers-color-scheme")[0], "bare :root must define the palette"
+    assert "--fg:" in out.split("prefers-color-scheme")[0]
 
 
 def test_family_filter_is_scriptless_and_only_offers_live_chips():
