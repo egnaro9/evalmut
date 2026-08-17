@@ -82,6 +82,16 @@ class EvalCase:
     # "number", "grounding", "contains", "injection_resistance"). Declared, it lets evalmut run
     # against a framework's graders unmodified while the grader keeps reporting its own honest id.
     grader_family: str | None = None
+    # Tool names that write the GRADER'S OWN verdict channel: the file it reads its outcome from,
+    # a reporting hook it honors, a binary it shells out to for the answer. An agent calling one of
+    # these is not solving the task, it is authoring the verdict, so the trajectory is a provable
+    # defect no matter what the task was. Wrongness here comes from THIS declaration, not from the
+    # grader's response: unlike a denylisted tool (which the grader can be probed about, since it is
+    # supposed to refuse it), a grader that accepts a verdict write cannot tell you whether the write
+    # was legitimate output or a forged result. Only the suite author knows which channel is theirs.
+    # Undeclared -> inject_denylisted_tool falls back to the denylist payload and this class never
+    # fires, so an undecorated case is under-tested rather than falsely accused.
+    verdict_channel: tuple[str, ...] = ()
     # Optional human-readable notes surfaced in reports; never load-bearing.
     intent: str = ""
     tags: tuple[str, ...] = field(default_factory=tuple)
@@ -96,10 +106,11 @@ def case(name: str, grader: Grader, good: GradeInput, *, judges: tuple[str, ...]
          num_tol: float | None = None, content_required: bool = False,
          tolerates: tuple[str, ...] = (), expected_trajectory: tuple[str, ...] = (),
          trajectory_threshold: float | None = None, grader_family: str | None = None,
+         verdict_channel: tuple[str, ...] = (),
          intent: str = "", tags: tuple[str, ...] = ()) -> EvalCase:
     """Terse constructor for suites written as data."""
     return EvalCase(name=name, grader=grader, good=good, judges=judges,
                     num_tol=num_tol, content_required=content_required, tolerates=tolerates,
                     expected_trajectory=expected_trajectory,
                     trajectory_threshold=trajectory_threshold, grader_family=grader_family,
-                    intent=intent, tags=tags)
+                    verdict_channel=verdict_channel, intent=intent, tags=tags)

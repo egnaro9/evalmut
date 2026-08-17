@@ -82,6 +82,31 @@ HOLE_CLASSES = (("vacuous", "missed", "sanity"),
                 ("coverage_gap", "missed", "diagnostic"))
 
 
+def stamp_is_reachable(commit: str, repo: pathlib.Path = ROOT) -> bool:
+    """Is the stamped commit an ancestor of HEAD in this repo?
+
+    The freshness gate proves the artifacts are what the code re-emits. It says nothing about
+    whether the commit the manifest NAMES still exists on this branch, and those are different
+    facts: rebasing, squashing, or amending rewrites every SHA while leaving each artifact byte
+    for byte identical. The bundle then points a replayer at `git checkout <sha>` for a commit
+    that is not there, and every other check stays green. Found the hard way, by hand, after a
+    `git rebase --signoff` orphaned a stamp that freshness had just certified.
+
+    Raises on a shallow clone rather than answering. A shallow repo cannot see its own history,
+    so it would report unreachable for a perfectly good stamp; returning False there would be a
+    false accusation and returning True would be a gate that passed because it could not look."""
+    shallow = subprocess.run(
+        ["git", "rev-parse", "--is-shallow-repository"], cwd=repo,
+        capture_output=True, text=True, check=True).stdout.strip()
+    if shallow == "true":
+        raise RuntimeError(
+            "cannot check stamp reachability in a shallow clone: history is truncated, so a "
+            "reachable stamp would read as missing. Check out with fetch-depth: 0.")
+    return subprocess.run(
+        ["git", "merge-base", "--is-ancestor", commit, "HEAD"],
+        cwd=repo, capture_output=True).returncode == 0
+
+
 def stamp_code_commit(repo: pathlib.Path = ROOT) -> str:
     """The publication stamp, with the fleet's two refusals: dirty tree,
     no code commit."""

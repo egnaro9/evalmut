@@ -85,6 +85,48 @@ def test_tampered_rows_change_the_manifest(battery):
     assert c["missed"] == h["missed"] - 1
 
 
+# ── the stamp must still be ON this branch, not merely correct when written ─
+
+def test_committed_stamp_is_reachable_from_head():
+    """Freshness proves the artifacts match the code. It does NOT prove the commit the
+    manifest names is still on this branch, and a history rewrite breaks the second while
+    leaving the first perfectly green: every SHA moves, every byte stays. The bundle then
+    tells a replayer to check out a commit that is not there.
+
+    Not skipped on a shallow clone. A skip reads green, which is the failure this whole file
+    exists to prevent, so the helper raises and the test fails loudly with the fix in the
+    message."""
+    manifest = json.loads((ROOT / "vac/vac.json").read_text(encoding="utf-8"))
+    stamp = manifest["protocol"]["issuer_commit"]
+    assert emit_vac.stamp_is_reachable(stamp), (
+        f"vac.json names issuer_commit {stamp}, which is not an ancestor of HEAD. "
+        "A rebase, squash, or amend rewrote history after the bundle was emitted; "
+        "re-run emit_vac.py so the stamp names a commit that exists here.")
+
+
+def test_reachability_check_fires_on_an_orphaned_stamp(toy_repo):
+    """Liveness for the gate above, reproducing the real incident: commit, record the SHA,
+    then rewrite history so that SHA is orphaned. The check must go False."""
+    orphaned = subprocess.run(["git", "rev-parse", "HEAD"], cwd=toy_repo,
+                              capture_output=True, text=True, check=True).stdout.strip()
+    assert emit_vac.stamp_is_reachable(orphaned, toy_repo), "sanity: own HEAD is reachable"
+    _git(toy_repo, "commit", "-q", "--amend", "-m", "rewritten")
+    assert not emit_vac.stamp_is_reachable(orphaned, toy_repo), (
+        "the amended-away commit still read as reachable: the gate cannot fire")
+
+
+def test_reachability_refuses_a_shallow_clone(tmp_path, toy_repo):
+    """A shallow clone cannot see its own history. Answering False there would falsely accuse
+    a good stamp; answering True would be a check that passed because it could not look. It
+    must refuse instead."""
+    _git(toy_repo, "commit", "-q", "--allow-empty", "-m", "second")
+    shallow = tmp_path / "shallow"
+    subprocess.run(["git", "clone", "-q", "--depth", "1", f"file://{toy_repo}", str(shallow)],
+                   check=True, capture_output=True)
+    with pytest.raises(RuntimeError, match="shallow"):
+        emit_vac.stamp_is_reachable("HEAD", shallow)
+
+
 # ── the stamp's two refusals, live on a throwaway repo ──────────────────────
 
 def _git(repo: pathlib.Path, *args: str) -> None:

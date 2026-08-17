@@ -8,6 +8,11 @@ jobs:
         python-version: ["3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # test_committed_stamp_is_reachable_from_head walks history to
+                           # confirm vac.json's issuer_commit is still an ancestor of HEAD.
+                           # A shallow clone cannot see that, and the check REFUSES rather
+                           # than guessing, so this job needs full history too.
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}

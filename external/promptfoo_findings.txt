@@ -1,8 +1,8 @@
 ────────────────────────────────────────────────────────────────────────
   evalmut — does your eval actually check anything?
 ────────────────────────────────────────────────────────────────────────
-  mutation score    45.5%   (5 caught / 11 applied; 79 n/a)
-  holes            6  (2 vacuous, 2 blind, 2 coverage-gap)
+  mutation score    50.0%   (8 caught / 16 applied; 86 n/a)
+  holes            8  (2 vacuous, 4 blind, 2 coverage-gap)
 
   VACUOUS — the grader asserts nothing about the answer and cannot fail
     • pf_word_count / concise_wordcount
@@ -12,17 +12,25 @@
     • pf_word_count / concise_wordcount
         mutation : garbage_answer — output replaced with unrelated text — a check that asserts nothing lets it pass
         grader   : passed the mutant  (word-count 5 in [0,50])
-        mined from: a real game test suite: assertTrue("result is a boolean", result || !result) — a tautology any output satisfies
+        mined from: a real game test suite: assertTrue("result is a boolean", result || !result) — a tautology any output satisfies. The SHAPE probe is externally sourced: https://arxiv.org/abs/2410.07137 measured a constant, input-independent reply at 86.5% LC win rate on AlpacaEval 2.0 (83.0 Arena-Hard-Auto, 9.55 MT-Bench) when shaped like the evaluator's scaffolding, against 0.6% for a naive constant — the same operator class, ~140x apart on form alone.
 
   BLIND SPOTS — a real defect shipped green; the check is present and broken
     • pf_contains / approval_contains
         mutation : keyword_present_but_negated — the checked keyword appears, but in a context that means the opposite
         grader   : passed the mutant  (contains 'approved' (case-sensitive))
         mined from: a CI proof-gate: greps its own run transcript for the token it should execute; the block message contains that token, so mentioning it passes the gate without running it
+    • pf_contains / approval_contains
+        mutation : spurious_cue_token_insert — the grepped keyword carried by text that does none of the work the task asks for — the cue is the entire signal the check consumes
+        grader   : passed the mutant  (contains 'approved' (case-sensitive))
+        mined from: https://arxiv.org/abs/1907.07355 (Niven & Kao, ACL 2019) : on ARCT, BERT reached 77% peak / 71.2% median against untrained humans at 0.798, and the authors attribute the signal to the unigram 'not' (61% productivity, 64% coverage). Partial-input probes that never see the argument still score: warrant-only 71%, reason+warrant 75%. The control is the hard ground truth: mirroring every instance so the cue distribution is symmetric drops the IDENTICAL model to peak 53.3% / median 50.5%, i.e. chance. ARCT's accuracy metric scored a cue-matcher within 3 points of untrained humans.
     • pf_icontains / error_icontains
         mutation : keyword_present_but_negated — the checked keyword appears, but in a context that means the opposite
         grader   : passed the mutant  (icontains 'error')
         mined from: a CI proof-gate: greps its own run transcript for the token it should execute; the block message contains that token, so mentioning it passes the gate without running it
+    • pf_icontains / error_icontains
+        mutation : spurious_cue_token_insert — the grepped keyword carried by text that does none of the work the task asks for — the cue is the entire signal the check consumes
+        grader   : passed the mutant  (icontains 'error')
+        mined from: https://arxiv.org/abs/1907.07355 (Niven & Kao, ACL 2019) : on ARCT, BERT reached 77% peak / 71.2% median against untrained humans at 0.798, and the authors attribute the signal to the unigram 'not' (61% productivity, 64% coverage). Partial-input probes that never see the argument still score: warrant-only 71%, reason+warrant 75%. The control is the hard ground truth: mirroring every instance so the cue distribution is symmetric drops the IDENTICAL model to peak 53.3% / median 50.5%, i.e. chance. ARCT's accuracy metric scored a cue-matcher within 3 points of untrained humans.
 
   COVERAGE GAPS — no check guards this shape (a missing grader, not a broken one)
     • pf_is_json / api_isjson
