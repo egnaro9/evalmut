@@ -203,3 +203,58 @@ score rather than guessed at, which is why the denominator is smaller than the a
 
 def render_html_from_json(text: str, **kw) -> str:
     return render_html(json.loads(text), **kw)
+
+
+# ── run-over-run diff ────────────────────────────────────────────────────────
+
+_DIFF_KIND_VAR = {"fixed": "--cool", "regressed": "--hot", "no_longer_tested": "--hot",
+                  "case_removed": "--hot", "coverage_lost": "--warn",
+                  "still_open": "--ink3", "newly_tested": "--ink3"}
+_DIFF_ORDER = ["no_longer_tested", "case_removed", "regressed", "coverage_lost",
+               "fixed", "still_open", "newly_tested"]
+
+
+def render_diff_html(changes, counts, line, scores, *, title="evalmut diff") -> str:
+    """Render a run-over-run diff. Suspicious transitions come FIRST, above the fixes.
+
+    Ordering is the argument. A reader scanning top-down should meet 'these stopped being tested'
+    before 'these were fixed', because the first can explain the second away and the reverse
+    reading is how a suite congratulates itself."""
+    from .diff import TRANSITIONS
+    old_s, new_s, note = scores
+    fmt = lambda v: f"{v:.1%}" if isinstance(v, (int, float)) else _e(v)
+
+    groups = []
+    for kind in _DIFF_ORDER:
+        rows = [c for c in changes if c.kind == kind]
+        if not rows:
+            continue
+        label, _prog, susp, means = TRANSITIONS[kind]
+        cards = "".join(
+            f'<div class="hole" style="--kind:var({_DIFF_KIND_VAR[kind]})">'
+            f'<div class="hid">{_e(c.operator)}</div>'
+            f'<div class="hcase">case <b>{_e(c.case)}</b> &middot; '
+            f'{_e(c.before or "absent")} &rarr; {_e(c.after or "absent")}</div></div>'
+            for c in rows)
+        groups.append(
+            f'<h2>{_e(label)} &middot; {len(rows)}{" &middot; worth a look" if susp else ""}</h2>'
+            f'<p class="context" style="margin-bottom:.9rem">{_e(means)}</p>{cards}')
+
+    warn = (f'<p class="context" style="color:var(--warn)"><b>Scores are not comparable here.</b> '
+            f'{_e(note)}</p>' if note else "")
+    return f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{_e(title)}</title><style>{_CSS}</style></head><body><div class="wrap">
+<h1>evalmut</h1><p class="sub">what changed between two runs</p>
+<p class="verdict">{_e(line)}</p>
+<div class="tally"><span>score before <b>{fmt(old_s)}</b></span>
+<span>score after <b>{fmt(new_s)}</b></span>
+<span>transitions <b>{len(changes)}</b></span></div>
+{warn}
+{"".join(groups) or '<p class="none">Nothing moved.</p>'}
+<footer>Keyed on (case, operator), which is the identity of the QUESTION being asked; the outcome
+is the answer. Mutant text and detail strings change for innocent reasons and are ignored, so
+churn is not reported as change.<br><br>
+A hole can leave a report because the check now catches it, or because the operator stopped
+applying. Both shrink the hole count and lift the score. They are never merged here.</footer>
+</div></body></html>"""

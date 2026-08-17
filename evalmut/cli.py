@@ -23,7 +23,8 @@ from pathlib import Path
 from . import catalog, run
 from .report import render, render_short
 from .manifest import diff_against as manifest_diff, suite_manifest
-from .report_html import render_html
+from .diff import diff_runs, headline, score_delta, summarize
+from .report_html import render_diff_html, render_html
 from .runner import MutationResult
 
 
@@ -101,6 +102,35 @@ def _cmd_run(args) -> int:
     return 1 if (serious or getattr(report, "baseline_failures", ())) else 0
 
 
+def _cmd_diff(args) -> int:
+    """Compare two `evalmut run --json --all` exports."""
+    old = json.loads(Path(args.old).read_text(encoding="utf-8"))
+    new = json.loads(Path(args.new).read_text(encoding="utf-8"))
+    if not (old.get("results") and new.get("results")):
+        sys.exit("evalmut: both exports must include per-row results (run with --json --all). "
+                 "A diff from the holes lists alone cannot see a MISSED become n/a, which is "
+                 "the transition most worth catching.")
+    changes = diff_runs(old, new)
+    counts = summarize(changes)
+    line = headline(counts)
+    scores = score_delta(old, new)
+    if args.html:
+        Path(args.html).write_text(render_diff_html(changes, counts, line, scores),
+                                   encoding="utf-8")
+        print(f"wrote {args.html}", file=sys.stderr)
+    else:
+        print(line)
+        if scores[2]:
+            print(f"  note: {scores[2]}")
+        for c in changes:
+            print(f"  {c.label:18} {c.case} / {c.operator}  "
+                  f"{c.before or 'absent'} -> {c.after or 'absent'}")
+    # A disappearance is a finding, so it fails the gate: a suite that stopped asking is not a
+    # suite that improved, and a green exit there would be the laundering this tool exists to stop.
+    dodged = counts["no_longer_tested"] + counts["case_removed"]
+    return 1 if (dodged or counts["regressed"] or counts["coverage_lost"]) else 0
+
+
 def _cmd_manifest(args) -> int:
     """Emit, or verify against, the pinned fixture corpus for a suite."""
     suite, _ = _load_suite(args.suite)
@@ -162,6 +192,11 @@ def main(argv=None) -> int:
     m.add_argument("--check", metavar="FILE",
                    help="verify the suite still matches this committed manifest (exit 1 if not)")
     m.set_defaults(fn=_cmd_manifest)
+
+    d = sub.add_parser("diff", help="what changed between two run exports")
+    d.add_argument("old"); d.add_argument("new")
+    d.add_argument("--html", metavar="FILE", help="write a standalone HTML rendering")
+    d.set_defaults(fn=_cmd_diff)
 
     # The report uses box-drawing / warning glyphs; on a non-UTF-8 stdout (Windows cp1252,
     # a redirected CI pipe) printing them would crash with UnicodeEncodeError and lose the
