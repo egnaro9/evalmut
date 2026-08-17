@@ -1,7 +1,7 @@
 ────────────────────────────────────────────────────────────────────────
   evalmut — does your eval actually check anything?
 ────────────────────────────────────────────────────────────────────────
-  mutation score    50.0%   (8 caught / 16 applied; 86 n/a)
+  mutation score    52.9%   (9 caught / 17 applied; 115 n/a)
   holes            8  (2 vacuous, 4 blind, 2 coverage-gap)
 
   VACUOUS — the grader asserts nothing about the answer and cannot fail

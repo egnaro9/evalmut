@@ -1,7 +1,7 @@
 ────────────────────────────────────────────────────────────────────────
   evalmut — does your eval actually check anything?
 ────────────────────────────────────────────────────────────────────────
-  mutation score    90.9%   (40 caught / 44 applied; 165 n/a)
+  mutation score    91.3%   (42 caught / 46 applied; 223 n/a)
   holes            4  (2 blind, 2 coverage-gap)
 
   BLIND SPOTS — a real defect shipped green; the check is present and broken
