@@ -12,7 +12,7 @@
     • pf_word_count / concise_wordcount
         mutation : garbage_answer — output replaced with unrelated text — a check that asserts nothing lets it pass
         grader   : passed the mutant  (word-count 5 in [0,50])
-        mined from: a real game test suite: assertTrue("result is a boolean", result || !result) — a tautology any output satisfies
+        mined from: a real game test suite: assertTrue("result is a boolean", result || !result) — a tautology any output satisfies. The SHAPE probe is externally sourced: https://arxiv.org/abs/2410.07137 measured a constant, input-independent reply at 86.5% LC win rate on AlpacaEval 2.0 (83.0 Arena-Hard-Auto, 9.55 MT-Bench) when shaped like the evaluator's scaffolding, against 0.6% for a naive constant — the same operator class, ~140x apart on form alone.
 
   BLIND SPOTS — a real defect shipped green; the check is present and broken
     • pf_contains / approval_contains

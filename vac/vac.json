@@ -18,12 +18,12 @@
   "version": {
    "evalmut": "0.1.0",
    "gradecore": "0.10.0",
-   "suites_commit": "e717602"
+   "suites_commit": "6567e75"
   }
  },
  "protocol": {
   "issuer": "egnaro9/evalmut",
-  "issuer_commit": "e717602",
+  "issuer_commit": "6567e75",
   "task": "mined-operator mutation battery over the two committed suites",
   "hashes": {
    "dogfood_suite_sha256": "a91270baa80366b749c15ac9e131aaa2f4ec9802d0534d56c35fcb433f42aa68",
@@ -36,7 +36,7 @@
  "evidence": [
   {
    "path": "dogfood_gradecore.json",
-   "sha256": "b122eb26a40613446a247d170cf952b21eb72174108033870bef78f5d0a90a53"
+   "sha256": "29d3415a6cebbe3fdc3a73a11d8da9ea47f457a7f9350956edd19002f69971c3"
   },
   {
    "path": "dogfood_gradecore.txt",
@@ -44,15 +44,15 @@
   },
   {
    "path": "operators.json",
-   "sha256": "ec9c756adc595e88a4d156012e3b17edc9591394b8c8284d88b6c88f52ea736f"
+   "sha256": "5fb707a1b583d8f321cf45c6e9de2a1f831c6483417d2dae9af38424d5238831"
   },
   {
    "path": "promptfoo_findings.json",
-   "sha256": "03f51bf5530c6224d17ca24a2f17420534c7052a18b9585cc1a5648ef9c17e8e"
+   "sha256": "c5e5e787e9613631147ea38329b17e991ede62e2b6699ac7c4f9aa82d3a3ef9d"
   },
   {
    "path": "promptfoo_findings.txt",
-   "sha256": "389de693c5747ac9c987cefac88da9e4885ae6b1f022305af2eb71c01523e83f"
+   "sha256": "6715229a6e496d99236ea06a207f225a8a16391d58c6373d82dfd14a09b9baa4"
   }
  ],
  "results": {
@@ -128,10 +128,10 @@
   ]
  },
  "replay": {
-  "issuer_commit": "e717602",
+  "issuer_commit": "6567e75",
   "commands": [
    "git clone https://github.com/egnaro9/evalmut issuer",
-   "git -C issuer checkout e717602",
+   "git -C issuer checkout 6567e75",
    "python -m pip install gradecore==0.10.0 ./issuer",
    "( cd issuer && python emit_vac.py )",
    "for f in dogfood_gradecore.txt dogfood_gradecore.json operators.json promptfoo_findings.txt promptfoo_findings.json vac.json; do cmp issuer/vac/$f $f || exit 1; done"
