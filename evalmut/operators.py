@@ -73,6 +73,17 @@ _ANSWER_PRESENCE_GRADERS = {"exact", "exact_cs"}
 # flagging it vacuous is correct.)
 _GARBAGE = "zxqfp wgbrtl mnkvd frljpz qptxw"   # letters: z x q f p w g b r t l m n k v d j
 _GARBAGE2 = "8H@ac3%o"                          # disjoint alphabet, mixed case + digits + punctuation
+# The SAME tokens as _GARBAGE, wearing answer SHAPE: leading capital, internal comma, terminal
+# period. Content identical, form different. It exists because shape alone moves a check enormously
+# and the bare probes above are blind to that: arXiv:2410.07137 measured a naive constant at 0.6%
+# and a scaffolding-shaped constant at 86.5% LC win rate on AlpacaEval 2.0, from the same operator
+# class, a ~140x swing with no change in how wrong the output is. A grader that REJECTS bare tokens
+# but ACCEPTS the same tokens punctuated is not checking the answer, it is checking the formatting,
+# and the bare-only battery reports that grader as discriminating. Reusing _GARBAGE's exact tokens
+# is deliberate: it adds no new lexical surface, so any needle matching this also matches _GARBAGE
+# and is already guarded, and it carries no digit, so a `number` grader cannot parse an answer out
+# of it.
+_GARBAGE3 = "Zxqfp wgbrtl, mnkvd frljpz qptxw."
 
 
 # Run-scoped memo of the grader's clean-reference id, keyed by id(case). run_case seeds it
@@ -322,7 +333,11 @@ def _near_miss_number(case: EvalCase) -> Optional[GradeInput]:
     "garbage_answer", family="answer", polarity=Polarity.DEFECT, field="text",
     defect_shape="output replaced with unrelated text — a check that asserts nothing lets it pass",
     real_origin="a real game test suite: assertTrue(\"result is a boolean\", result || "
-                "!result) — a tautology any output satisfies",
+                "!result) — a tautology any output satisfies. The SHAPE probe is externally "
+                "sourced: https://arxiv.org/abs/2410.07137 measured a constant, input-independent "
+                "reply at 86.5% LC win rate on AlpacaEval 2.0 (83.0 Arena-Hard-Auto, 9.55 "
+                "MT-Bench) when shaped like the evaluator's scaffolding, against 0.6% for a naive "
+                "constant — the same operator class, ~140x apart on form alone.",
     op_type=OperatorType.SANITY,
 )
 def _garbage_answer(case: EvalCase) -> Optional[GradeInput]:
@@ -343,6 +358,12 @@ def _garbage_answer(case: EvalCase) -> Optional[GradeInput]:
     # grader that passes BOTH structurally-disjoint garbages is discriminating nothing.
     if _grader_cleanly_passes(case, _GARBAGE) and not _grader_cleanly_passes(case, _GARBAGE2):
         return None
+    # Shape probe (arXiv:2410.07137). If the bare garbage is REJECTED, the old battery stopped here
+    # and the grader read as discriminating. Re-probe with the SAME tokens punctuated: a grader that
+    # accepts those is satisfied by form, not by the answer, and every formatted nonsense reply
+    # passes it. Report the shape that actually survives, so the finding names the real hole.
+    if not _grader_cleanly_passes(case, _GARBAGE) and _grader_cleanly_passes(case, _GARBAGE3):
+        return with_text(case.good, _GARBAGE3)
     return with_text(case.good, _GARBAGE)
 
 
