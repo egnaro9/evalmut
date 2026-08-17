@@ -112,7 +112,7 @@ def test_reachability_check_fires_on_an_orphaned_stamp(toy_repo):
     assert emit_vac.stamp_is_reachable(orphaned, toy_repo), "sanity: own HEAD is reachable"
     _git(toy_repo, "commit", "-q", "--amend", "-m", "rewritten")
     assert not emit_vac.stamp_is_reachable(orphaned, toy_repo), (
-        "the amended-away commit still read as reachable — the gate cannot fire")
+        "the amended-away commit still read as reachable: the gate cannot fire")
 
 
 def test_reachability_refuses_a_shallow_clone(tmp_path, toy_repo):
