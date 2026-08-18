@@ -1,0 +1,34 @@
+{
+  "applicability_predicate": "Correct in SHAPE, unreachable by this tool's MUTATION SURFACE. The defect predicate is sound (a legal parameter value is rejected because it is falsy rather than the wrong type), but reaching it requires mutating the assertion's PARAMETER, and evalmut mutates model OUTPUTS only.",
+  "applicable_to_evalmut": false,
+  "counterexample": "An genuinely absent value (undefined) SHOULD be rejected, so an operator must distinguish falsy-but-present from missing.",
+  "id": "CB-008",
+  "maps_to_existing_operator": "none. evalmut mutates OUTPUTS, not assertion PARAMETERS, so this shape is outside its current mutation surface even though the defect is in range conceptually.",
+  "not_applicable_cases": [
+    "evalmut mutates outputs, never assertion parameters, so no operator it can run reaches this defect. Marking it applicable would relabel parameter mutation as output mutation purely to raise the applicable count.",
+    "it becomes reachable only with a separate parameter-mutation mechanism, which is a different instrument with its own validity questions and does not exist here.",
+    "parameters whose accepted type has no falsy members are out of scope regardless"
+  ],
+  "pair": {
+    "clean_input": "contains value 42 against an output containing '42'",
+    "defective_transformation": "contains value 0 against an output containing '0'",
+    "expected_on_clean": "PASS.",
+    "expected_on_defective": "PASS. 0 is a legal numeric value and the check should find it."
+  },
+  "risks": {
+    "false_negative": "Only testing 0 misses the empty string and false, which fail identically.",
+    "false_positive": "Demanding that undefined be accepted would break a correct guard."
+  },
+  "semantic": "`handleContains` guarded its value with `invariant(value, ...)`, a truthiness check, so the numeric 0 was rejected with 'must have a string or number value' even though the following line and `String(value)` show numbers are intended.",
+  "source": {
+    "author": "WatchTree-19",
+    "authored_by_egnaro9": false,
+    "merge_commit": "06d8105dcaa2",
+    "pr": 10012,
+    "repo": "promptfoo/promptfoo",
+    "url": "https://github.com/promptfoo/promptfoo/pull/10012"
+  },
+  "status": "CANDIDATE, not independently reviewed",
+  "title": "contains and icontains rejected the numeric value 0",
+  "verdict_class": "grading-error"
+}

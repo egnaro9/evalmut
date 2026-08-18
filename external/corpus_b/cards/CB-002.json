@@ -1,0 +1,33 @@
+{
+  "applicability_predicate": "Any assertion that adds a hand-written heuristic on top of a real parser to catch a suspected user error. The predicate is: a syntactically valid input is rejected by the heuristic rather than by the grammar.",
+  "applicable_to_evalmut": true,
+  "counterexample": "`SELECT a b FROM t` is genuinely ambiguous and a check may reject it. An operator that demands it pass would be asserting a semantic promptfoo never made.",
+  "id": "CB-002",
+  "maps_to_existing_operator": "parser_accepted_variant (already implemented, cites this PR)",
+  "not_applicable_cases": [
+    "checks with no heuristic layer, where acceptance is exactly the parser's",
+    "cases where the heuristic is the documented contract rather than a guard"
+  ],
+  "pair": {
+    "clean_input": "SELECT name FROM users",
+    "defective_transformation": "SELECT DISTINCT name FROM users   (valid; the heuristic read DISTINCT as a column)",
+    "expected_on_clean": "PASS.",
+    "expected_on_defective": "PASS. This is the point: the DEFECT is in the checker, and a sound check must pass both."
+  },
+  "risks": {
+    "false_negative": "Testing only DISTINCT leaves ALL, TOP and other leading modifiers unexercised, so the same class of defect survives.",
+    "false_positive": "Flagging a check for rejecting truly malformed SQL, which is its job."
+  },
+  "semantic": "`is-sql` layered a two-column missing-comma heuristic on top of node-sql-parser. The heuristic counted a leading SELECT modifier as the first column, so valid statements beginning with DISTINCT were rejected.",
+  "source": {
+    "author": "i-anubhav-anand",
+    "authored_by_egnaro9": false,
+    "merge_commit": "c08cfc454d38",
+    "pr": 9784,
+    "repo": "promptfoo/promptfoo",
+    "url": "https://github.com/promptfoo/promptfoo/pull/9784"
+  },
+  "status": "CANDIDATE, not independently reviewed",
+  "title": "is-sql false-rejected SELECT DISTINCT",
+  "verdict_class": "wrong-verdict"
+}

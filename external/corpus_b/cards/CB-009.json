@@ -1,0 +1,33 @@
+{
+  "applicability_predicate": "Any structural validator that indexes into nested output before confirming the shape exists. The predicate is: malformed input produces an exception rather than the FAIL the validator promises.",
+  "applicable_to_evalmut": true,
+  "counterexample": "Input that is not an array at all may legitimately raise before the assertion's own contract applies, depending on where the harness draws the boundary.",
+  "id": "CB-009",
+  "maps_to_existing_operator": "evalmut records an `error` OUTCOME, which is the right bucket, but has no operator that deletes a required nested object.",
+  "not_applicable_cases": [
+    "validators that parse into a schema before field access",
+    "runtimes where the harness converts exceptions into failures anyway, which changes the observable outcome"
+  ],
+  "pair": {
+    "clean_input": "[{\"function\": {\"name\": \"f\", \"arguments\": \"{}\"}}]",
+    "defective_transformation": "[{\"id\": \"call_1\"}]   (a tool_calls entry with no function object)",
+    "expected_on_clean": "PASS.",
+    "expected_on_defective": "FAIL with a reason. Not a crash."
+  },
+  "risks": {
+    "false_negative": "A harness that wraps handlers in try/catch converts the crash into a fail, hiding the defect from any black-box probe.",
+    "false_positive": "Counting a deliberate upstream exception as this defect."
+  },
+  "semantic": "`is-valid-openai-tools-call` is meant to reject anything that is not a valid tools response with pass:false and a reason. It read `toolsOutput[0].function.name` directly, so an entry without a `function` object threw TypeError, an uncaught crash rather than an assertion failure.",
+  "source": {
+    "author": "he-yufeng",
+    "authored_by_egnaro9": false,
+    "merge_commit": "ffd892292644",
+    "pr": 10076,
+    "repo": "promptfoo/promptfoo",
+    "url": "https://github.com/promptfoo/promptfoo/pull/10076"
+  },
+  "status": "CANDIDATE, not independently reviewed",
+  "title": "a tool_calls entry with no function object crashed instead of failing",
+  "verdict_class": "grading-error"
+}

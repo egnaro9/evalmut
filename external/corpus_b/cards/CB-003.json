@@ -1,0 +1,33 @@
+{
+  "applicability_predicate": "Any text-overlap metric in a family whose members disagree about normalisation. The predicate is: two metrics documented as comparable disagree on an input that differs only by an incidental property.",
+  "applicable_to_evalmut": true,
+  "counterexample": "For a task whose ground truth is 'US' versus 'us', case IS the answer, and an operator that lowercases would manufacture a false equivalence.",
+  "id": "CB-003",
+  "maps_to_existing_operator": "case_variant (implemented, but currently cites gradecore rather than this)",
+  "not_applicable_cases": [
+    "metrics whose contract is explicitly case-sensitive",
+    "tasks where capitalisation carries meaning, such as proper-noun extraction"
+  ],
+  "pair": {
+    "clean_input": "the cat sat on the mat",
+    "defective_transformation": "The Cat Sat On The Mat   (identical content, different case)",
+    "expected_on_clean": "Score at the reference level.",
+    "expected_on_defective": "The same score. A case variant of a correct answer is still correct under this metric's contract."
+  },
+  "risks": {
+    "false_negative": "Only testing ASCII case misses Unicode case folding, where the same defect hides.",
+    "false_positive": "Applying this where case is semantic turns a correct rejection into a reported hole."
+  },
+  "semantic": "`handleRougeScore` passed empty options to js-rouge, taking the library default caseSensitive: true, while bleu, gleu and meteor all lowercase first. A single capitalisation changed the score.",
+  "source": {
+    "author": "i-anubhav-anand",
+    "authored_by_egnaro9": false,
+    "merge_commit": "386c0129bf50",
+    "pr": 9739,
+    "repo": "promptfoo/promptfoo",
+    "url": "https://github.com/promptfoo/promptfoo/pull/9739"
+  },
+  "status": "CANDIDATE, not independently reviewed",
+  "title": "ROUGE scored case-sensitively while its sibling metrics did not",
+  "verdict_class": "wrong-verdict"
+}

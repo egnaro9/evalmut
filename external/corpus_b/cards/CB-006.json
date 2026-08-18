@@ -1,0 +1,33 @@
+{
+  "applicability_predicate": "Any scored assertion whose default threshold sits at or below the minimum of its own score range. The predicate is: with default configuration, no input can fail.",
+  "applicable_to_evalmut": true,
+  "counterexample": "An explicitly configured `threshold: 0` is a legitimate user choice and must still be honoured, which is why the fix used nullish coalescing rather than truthiness.",
+  "id": "CB-006",
+  "maps_to_existing_operator": "none. Closest is the `vacuous` hole kind, which is a classification and not an operator.",
+  "not_applicable_cases": [
+    "assertions whose threshold has no default and must be supplied",
+    "cases where an explicit 0 is deliberately configured, which remains valid"
+  ],
+  "pair": {
+    "clean_input": "a relevant conversation, default threshold",
+    "defective_transformation": "a wholly irrelevant conversation, default threshold",
+    "expected_on_clean": "PASS.",
+    "expected_on_defective": "FAIL. A default that cannot fail is not a check."
+  },
+  "risks": {
+    "false_negative": "A default just ABOVE the floor, say 0.01, is nearly as vacuous and would not be caught by a test that only asks 'can anything fail'.",
+    "false_positive": "Treating a deliberate explicit 0 as the defect would report a hole in correct configuration."
+  },
+  "semantic": "An omitted threshold was treated as 0. The metric's score is a proportion in [0,1], so an entirely irrelevant conversation scoring 0 still passed. Fixed to default 0.5, with nullish coalescing so an explicit 0 stays valid.",
+  "source": {
+    "author": "Gujiassh",
+    "authored_by_egnaro9": false,
+    "merge_commit": "2812d7622b2e",
+    "pr": 10142,
+    "repo": "promptfoo/promptfoo",
+    "url": "https://github.com/promptfoo/promptfoo/pull/10142"
+  },
+  "status": "CANDIDATE, not independently reviewed",
+  "title": "conversation-relevance defaulted its threshold to 0, so everything passed",
+  "verdict_class": "vacuous-check"
+}

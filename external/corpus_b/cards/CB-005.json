@@ -1,0 +1,33 @@
+{
+  "applicability_predicate": "Any threshold check whose comparison operand can become undefined or NaN, where the language's comparison semantics turn 'no value' into 'not over the limit'. The predicate is: an unconfigurable-looking parameter takes a value that makes the check unable to fail.",
+  "applicable_to_evalmut": true,
+  "counterexample": "percentile: 100 is legitimately the maximum and must not be treated as out of range.",
+  "id": "CB-005",
+  "maps_to_existing_operator": "none. evalmut has a `vacuous` hole KIND but no parameter-range operator.",
+  "not_applicable_cases": [
+    "checks that validate their parameters before comparing",
+    "languages where comparison against a null value raises rather than returning false"
+  ],
+  "pair": {
+    "clean_input": "percentile: 95 over a normal duration distribution",
+    "defective_transformation": "percentile: 150   (out of range)",
+    "expected_on_clean": "Verdict determined by the real p95 duration.",
+    "expected_on_defective": "FAIL or ERROR, naming the bad parameter. Silently passing is the defect."
+  },
+  "risks": {
+    "false_negative": "An operator that only tries 150 misses negative percentiles and non-numeric values, which reach the same undefined state by another route.",
+    "false_positive": "Flagging boundary values (0, 100) that the check is right to accept."
+  },
+  "semantic": "`trace-span-duration` never validated its `percentile`. A value of 150 indexed past the end of the sorted durations, `calculatePercentile` returned undefined, and `undefined > max` is false, so the assertion PASSED and reported '(undefinedms) is within...'.",
+  "source": {
+    "author": "he-yufeng",
+    "authored_by_egnaro9": false,
+    "merge_commit": "49c0f6d77496",
+    "pr": 10089,
+    "repo": "promptfoo/promptfoo",
+    "url": "https://github.com/promptfoo/promptfoo/pull/10089"
+  },
+  "status": "CANDIDATE, not independently reviewed",
+  "title": "out-of-range percentile made trace-span-duration silently pass",
+  "verdict_class": "vacuous-check"
+}

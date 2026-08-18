@@ -1,0 +1,33 @@
+{
+  "applicability_predicate": "None for evalmut as it stands.",
+  "applicable_to_evalmut": false,
+  "counterexample": "A slow check on a slow machine is not a defect, which is why this needs a declared budget rather than a stopwatch.",
+  "id": "CB-011",
+  "maps_to_existing_operator": "none.",
+  "not_applicable_cases": [
+    "no verdict changes. Before and after the fix the same inputs produce the same results, only slower, so a verdict-based tester sees nothing.",
+    "detecting it needs a time or complexity budget per check, which evalmut does not declare and could not adjudicate deterministically across machines."
+  ],
+  "pair": {
+    "clean_input": "a normal candidate string",
+    "defective_transformation": "a candidate with a long run of punctuation or whitespace",
+    "expected_on_clean": "Scored promptly.",
+    "expected_on_defective": "Scored promptly. The defect is elapsed time, not the answer."
+  },
+  "risks": {
+    "false_negative": "A real availability defect in an eval suite is invisible to this tool. Worth stating plainly: a green evalmut run says nothing about whether a suite can be wedged by its own inputs.",
+    "false_positive": "n/a, no operator is proposed."
+  },
+  "semantic": "Trailing-period normalisation and Markdown-fence parsing used patterns that backtrack catastrophically on long punctuation or whitespace runs. Replaced with a linear scan and a deterministic fence parser.",
+  "source": {
+    "author": "jameshiester-oai",
+    "authored_by_egnaro9": false,
+    "merge_commit": "57243cf84bd9",
+    "pr": 10373,
+    "repo": "promptfoo/promptfoo",
+    "url": "https://github.com/promptfoo/promptfoo/pull/10373"
+  },
+  "status": "CANDIDATE, not independently reviewed",
+  "title": "regex backtracking in GLEU normalisation and SQL fence parsing",
+  "verdict_class": "performance"
+}

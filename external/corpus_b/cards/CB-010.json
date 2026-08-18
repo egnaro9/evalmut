@@ -1,0 +1,33 @@
+{
+  "applicability_predicate": "None for evalmut as it stands.",
+  "applicable_to_evalmut": false,
+  "counterexample": "Any verdict-only comparison passes both before and after the fix, which is precisely why this card is marked non-applicable rather than pending.",
+  "id": "CB-010",
+  "maps_to_existing_operator": "none, and none should be added.",
+  "not_applicable_cases": [
+    "evalmut classifies by VERDICT. This defect never changed a verdict or a score, so every mutation would be scored identically before and after the fix and the tool would report no hole while a real, merged defect sat in front of it.",
+    "detecting it needs an explanation-quality oracle, which is a rubric or judge problem and is deliberately outside this tool."
+  ],
+  "pair": {
+    "clean_input": "not-is-json against non-JSON output: PASS with a correct reason",
+    "defective_transformation": "not-is-json against JSON output: FAIL with the reason 'Expected output to be valid JSON', which describes the un-negated assertion",
+    "expected_on_clean": "PASS.",
+    "expected_on_defective": "FAIL, with a reason that describes the NEGATED assertion."
+  },
+  "risks": {
+    "false_negative": "The honest statement of the limit: an eval suite can be wrong in ways a verdict-based mutation tester structurally cannot see. This card exists to keep that visible in the corpus rather than in a footnote.",
+    "false_positive": "n/a, no operator is proposed."
+  },
+  "semantic": "Schema-less `not-is-json` and `not-contains-json` already returned the correct verdict and score. Only the failure REASON was wrong, describing the positive assertion ('Expected output to be valid JSON') on a negated one.",
+  "source": {
+    "author": "he-yufeng",
+    "authored_by_egnaro9": false,
+    "merge_commit": "d1d8de31470b",
+    "pr": 9824,
+    "repo": "promptfoo/promptfoo",
+    "url": "https://github.com/promptfoo/promptfoo/pull/9824"
+  },
+  "status": "CANDIDATE, not independently reviewed",
+  "title": "inverse JSON assertions reported the opposite assertion's failure message",
+  "verdict_class": "message-only"
+}

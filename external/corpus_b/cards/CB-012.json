@@ -1,0 +1,33 @@
+{
+  "applicability_predicate": "Correct in SHAPE, out of scope in EXECUTION.",
+  "applicable_to_evalmut": false,
+  "counterexample": "Provider drift alone can flip a moderation verdict between runs, which would be indistinguishable from the defect under a black-box probe.",
+  "id": "CB-012",
+  "maps_to_existing_operator": "none. Same missing negation-parity operator as CB-004.",
+  "not_applicable_cases": [
+    "the moderation assertion calls a live moderation API, so the check is not deterministic. evalmut's entire remit is deterministic scorers, and a run against this would confound a real hole with provider variance.",
+    "it could become applicable against a recorded or stubbed moderation backend, which is a different experiment with its own validity questions."
+  ],
+  "pair": {
+    "clean_input": "moderation on flagged content: FAIL",
+    "defective_transformation": "not-moderation on that same flagged content",
+    "expected_on_clean": "FAIL.",
+    "expected_on_defective": "PASS. The negation must invert."
+  },
+  "risks": {
+    "false_negative": "Kept in the corpus because dropping it would overstate how much of the negation defect class is reachable deterministically. CB-004 is reachable; this one is not.",
+    "false_positive": "Provider variance reported as a suite hole."
+  },
+  "semantic": "`handleModeration` returned the matcher's pass and score verbatim without reading `inverse`, so `not-moderation` behaved identically to `moderation`. Structurally the same defect as CB-004, in a different handler.",
+  "source": {
+    "author": "i-anubhav-anand",
+    "authored_by_egnaro9": false,
+    "merge_commit": "c56c7121749a",
+    "pr": 9738,
+    "repo": "promptfoo/promptfoo",
+    "url": "https://github.com/promptfoo/promptfoo/pull/9738"
+  },
+  "status": "CANDIDATE, not independently reviewed",
+  "title": "not-moderation ignored the inverse flag, making the negation a complete no-op",
+  "verdict_class": "wrong-verdict"
+}

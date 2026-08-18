@@ -1,0 +1,33 @@
+{
+  "applicability_predicate": "Any assertion whose contract is 'this output is valid <format>' but whose implementation delegates to a lenient or recovering parser. The predicate is: the checker's parser accepts input the format's own grammar rejects.",
+  "applicable_to_evalmut": true,
+  "counterexample": "A document with an unusual but LEGAL construct, such as a CDATA section or a namespace prefix, must still PASS. An operator that flags those is measuring the checker's strictness, not its correctness.",
+  "id": "CB-001",
+  "maps_to_existing_operator": "malformed_structure (already implemented, cites this PR)",
+  "not_applicable_cases": [
+    "assertions that only extract a field and never claim whole-document validity",
+    "formats with no well-formedness notion distinct from parseability"
+  ],
+  "pair": {
+    "clean_input": "<root><a>1</a></root>",
+    "defective_transformation": "<root><a>1</b></root>   (mismatched closing tag)",
+    "expected_on_clean": "PASS. The document is well formed.",
+    "expected_on_defective": "FAIL. Mismatched tags are not well-formed XML."
+  },
+  "risks": {
+    "false_negative": "A parser lenient in a way the operator does not exercise (for example duplicate roots but not unquoted attributes) leaves the defect undetected and the check looks sound.",
+    "false_positive": "Treating a legal-but-exotic document as defective produces a false hole and would push a maintainer to loosen a check that was right."
+  },
+  "semantic": "`is-xml` is documented as validating the ENTIRE output as XML. It delegated to fast-xml-parser, which is a lenient data extractor rather than a validating parser, so well-formedness was never actually asserted.",
+  "source": {
+    "author": "i-anubhav-anand",
+    "authored_by_egnaro9": false,
+    "merge_commit": "96929e8758ca",
+    "pr": 9782,
+    "repo": "promptfoo/promptfoo",
+    "url": "https://github.com/promptfoo/promptfoo/pull/9782"
+  },
+  "status": "CANDIDATE, not independently reviewed",
+  "title": "is-xml accepted non-well-formed XML",
+  "verdict_class": "wrong-verdict"
+}

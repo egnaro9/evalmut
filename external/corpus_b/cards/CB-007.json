@@ -1,0 +1,33 @@
+{
+  "applicability_predicate": "Any overlap metric that tokenises before comparing. The predicate is: two inputs that normalise to the empty token list are scored as identical, or an empty output raises instead of scoring.",
+  "applicable_to_evalmut": true,
+  "counterexample": "A genuinely empty reference paired with a genuinely empty candidate may be a legitimate degenerate case in some suites, and the card does not claim otherwise for those.",
+  "id": "CB-007",
+  "maps_to_existing_operator": "blank_output exists but cites gradecore and targets a different contract.",
+  "not_applicable_cases": [
+    "metrics that compare raw strings without tokenisation",
+    "suites where an empty output is filtered upstream and never reaches the metric"
+  ],
+  "pair": {
+    "clean_input": "candidate 'the cat sat', reference 'the cat sat'",
+    "defective_transformation": "candidate '   ', reference '...'   (both normalise to no tokens)",
+    "expected_on_clean": "Perfect score, correctly.",
+    "expected_on_defective": "Score 0. Two empty token lists are not a match; they are an absence of evidence."
+  },
+  "risks": {
+    "false_negative": "Testing only whitespace misses punctuation-only and zero-width-character inputs that reach the same state.",
+    "false_positive": "Suites that legitimately define empty-equals-empty as a pass would be reported as holed."
+  },
+  "semantic": "An empty model output is a valid evaluation result, but GLEU treated it as invalid input and raised, converting a score-based failure into a grading error. Separately, whitespace-only and period-only pairs normalised to empty token lists and received an accidental perfect match.",
+  "source": {
+    "author": "he-yufeng",
+    "authored_by_egnaro9": false,
+    "merge_commit": "cc8c0c65f137",
+    "pr": 9850,
+    "repo": "promptfoo/promptfoo",
+    "url": "https://github.com/promptfoo/promptfoo/pull/9850"
+  },
+  "status": "CANDIDATE, not independently reviewed",
+  "title": "tokenless GLEU inputs errored, and whitespace-only pairs scored a perfect match",
+  "verdict_class": "vacuous-check"
+}
