@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+title: "evalmut: mutation testing for evaluation suites"
+message: >-
+  If you use this software, please cite it using the metadata from this file.
+  Citing the archived release rather than the repository pins the exact code
+  a result came from, which is the whole point of the tool.
+type: software
+authors:
+  - given-names: Erik
+    family-names: Hill
+    orcid: "https://orcid.org/0009-0002-5912-967X"
+    email: erik@erikhill.dev
+repository-code: "https://github.com/egnaro9/evalmut"
+url: "https://erikhill.dev"
+abstract: >-
+  Mutation testing for evals. Injects declared defects into the system under
+  test and reports which of the suite's checks stay green. A surviving mutation
+  is a measured hole in the eval, not an error. Operators are mined from
+  documented defects rather than authored for coverage, and an operator that
+  cannot establish its mutant's polarity declines rather than guessing.
+keywords:
+  - mutation testing
+  - evaluation harnesses
+  - software testing
+  - LLM evaluation
+  - test suite validity
+license: MIT
+version: 0.1.0
