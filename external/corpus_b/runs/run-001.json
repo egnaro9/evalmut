@@ -1,0 +1,381 @@
+{
+  "bundle_version": 1,
+  "environment": {
+    "arch": "arm64",
+    "deps": {
+      "fast-xml-parser": "5.7.2",
+      "js-rouge": "3.2.0",
+      "js-yaml": "5.2.2",
+      "node-sql-parser": "5.4.0"
+    },
+    "node": "v24.14.1",
+    "node_modules": "symlinked from ~/promptfoo/node_modules, single install shared across commits",
+    "npm": "11.11.0",
+    "os": "macOS-26.6-arm64-arm-64bit-Mach-O",
+    "promptfoo_clone": "~/promptfoo (worktree, detached; main checkout never modified)",
+    "python": "3.14.6",
+    "tsx": "tsx v4.23.1"
+  },
+  "excluded_card_ids": {
+    "CB-008": "output-mutation-inapplicable: the defect is in an assertion PARAMETER and evalmut mutates model OUTPUTS only",
+    "CB-010": "message-only: verdict and score were already correct, so no verdict-based probe can distinguish the two sides",
+    "CB-011": "performance-only: regex backtracking, no verdict changes at all",
+    "CB-012": "live-provider confound: moderation calls an external provider, so drift would be indistinguishable from the defect"
+  },
+  "executed_card_ids": [
+    "CB-001",
+    "CB-002",
+    "CB-003",
+    "CB-004",
+    "CB-005",
+    "CB-006",
+    "CB-007",
+    "CB-009"
+  ],
+  "freeze_commit": "f1c97f3",
+  "isolation": "Executed in a detached git worktree. The operator's ~/promptfoo checkout has uncommitted work and was never modified.",
+  "label": "Corpus B candidate run: eight frozen, externally sourced, output-mutation-applicable cards attempted; four source cards excluded under recorded structural predicates; independent review pending.",
+  "manifest_sha256": "c29928383f0c086b2716ea9a19c92cff4fa94f368081385290b5c174acf596fc",
+  "method": "For each card the probe runs at the PARENT of the fix commit and again at the fix commit. The second run is the control: a probe returning the same result on both sides is not measuring the defect. Promptfoo's own modules are imported directly; nothing is reimplemented.",
+  "results": [
+    {
+      "card_id": "CB-001",
+      "card_sha256": "d2a917dd33e76344facc812757575a292cd98e86258314e5ee257750ef25e2f9",
+      "fix_commit": "96929e8758ca",
+      "module": "src/assertions/xml.ts",
+      "not_probed_reason": null,
+      "raw_post_fix": {
+        "clean": {
+          "isValid": true,
+          "reason": "XML is valid and contains all required elements"
+        },
+        "counterexample_legal": {
+          "isValid": true,
+          "reason": "XML is valid and contains all required elements"
+        },
+        "defective": {
+          "isValid": false,
+          "reason": "XML parsing failed: 1:14: unexpected close tag."
+        }
+      },
+      "raw_pre_fix": {
+        "clean": {
+          "isValid": true,
+          "reason": "XML is valid and contains all required elements"
+        },
+        "counterexample_legal": {
+          "isValid": true,
+          "reason": "XML is valid and contains all required elements"
+        },
+        "defective": {
+          "isValid": true,
+          "reason": "XML is valid and contains all required elements"
+        }
+      },
+      "source_url": "https://github.com/promptfoo/promptfoo/pull/9782",
+      "status": "VERIFIED",
+      "status_reason": "Defect reproduced pre-fix (malformed XML returned isValid:true) and is absent post-fix (isValid:false, 'unexpected close tag'). The legal CDATA counterexample passes on BOTH sides, so the probe is not merely strict."
+    },
+    {
+      "card_id": "CB-002",
+      "card_sha256": "8acb1712fc5f343a31890b7c63dd916eff3b7ca0c2bb7198eebc056c2456dfb4",
+      "fix_commit": "c08cfc454d38",
+      "module": "src/assertions/sql.ts",
+      "not_probed_reason": null,
+      "raw_post_fix": {
+        "_error": [
+          "    at #asyncInstantiate (node:internal/modules/esm/module_job:319:21)",
+          "    at async ModuleJob.run (node:internal/modules/esm/module_job:422:5)",
+          "    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:661:26)",
+          "    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)",
+          "",
+          "Node.js v24.14.1"
+        ]
+      },
+      "raw_pre_fix": {
+        "_error": [
+          "    at #asyncInstantiate (node:internal/modules/esm/module_job:319:21)",
+          "    at async ModuleJob.run (node:internal/modules/esm/module_job:422:5)",
+          "    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:661:26)",
+          "    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)",
+          "",
+          "Node.js v24.14.1"
+        ]
+      },
+      "source_url": "https://github.com/promptfoo/promptfoo/pull/9784",
+      "status": "INCOMPLETE",
+      "status_reason": "Not executed. A transitive import (src/util/json.ts -> js-yaml) fails under Node v24.14.1 + tsx with \"does not provide an export named 'default'\". This is an ESM interop failure in THIS harness. It is not a promptfoo defect and not a card defect, and no capability conclusion about either is available."
+    },
+    {
+      "card_id": "CB-003",
+      "card_prediction_falsified": "The card predicted the clean input would 'score at the reference level'. It scored 0.83 pre-fix and 1.00 post-fix, so the fix changed the clean-side result too and the card's expected_on_clean was FALSIFIED. The defect reproduction stands; the card's prediction about the unmutated input does not. Recorded rather than reconciled, because a frozen card that turns out to be partly wrong is a finding about the card.",
+      "card_sha256": "d9c1a85cc33f59e3f635e11362e7d898f099bc667eaeb9e8e76f5de8d2c12c8d",
+      "fix_commit": "386c0129bf50",
+      "module": "src/assertions/rouge.ts",
+      "not_probed_reason": null,
+      "raw_post_fix": {
+        "clean": {
+          "assertion": {
+            "threshold": 0.9,
+            "type": "rouge-n"
+          },
+          "pass": true,
+          "reason": "ROUGE-N score 1.00 is greater than or equal to threshold 0.9",
+          "score": 1
+        },
+        "defective": {
+          "assertion": {
+            "threshold": 0.9,
+            "type": "rouge-n"
+          },
+          "pass": true,
+          "reason": "ROUGE-N score 1.00 is greater than or equal to threshold 0.9",
+          "score": 1
+        }
+      },
+      "raw_pre_fix": {
+        "clean": {
+          "assertion": {
+            "threshold": 0.9,
+            "type": "rouge-n"
+          },
+          "pass": false,
+          "reason": "ROUGE-N score 0.83 is less than threshold 0.9",
+          "score": 0.8333333333333334
+        },
+        "defective": {
+          "assertion": {
+            "threshold": 0.9,
+            "type": "rouge-n"
+          },
+          "pass": false,
+          "reason": "ROUGE-N score 0.00 is less than threshold 0.9",
+          "score": 0
+        }
+      },
+      "source_url": "https://github.com/promptfoo/promptfoo/pull/9739",
+      "status": "VERIFIED",
+      "status_reason": "Defect reproduced: a case variant scored 0.00 pre-fix and 1.00 post-fix. SEE anomaly: the card's prediction for the CLEAN input was wrong."
+    },
+    {
+      "card_id": "CB-004",
+      "card_sha256": "de9ee47b05983a977a0d7f4aefa6bb134f26db756e4381cff12c59bb27a3d1dc",
+      "fix_commit": "560ea2d236e7",
+      "module": "src/assertions/levenshtein.ts",
+      "not_probed_reason": null,
+      "raw_post_fix": {
+        "clean": {
+          "assertion": {
+            "threshold": 3,
+            "type": "levenshtein"
+          },
+          "pass": true,
+          "reason": "Assertion passed",
+          "score": 1
+        },
+        "defective": {
+          "assertion": {
+            "threshold": 3,
+            "type": "not-levenshtein"
+          },
+          "pass": false,
+          "reason": "Levenshtein distance 0 is less than or equal to threshold 3",
+          "score": 0
+        }
+      },
+      "raw_pre_fix": {
+        "clean": {
+          "assertion": {
+            "threshold": 3,
+            "type": "levenshtein"
+          },
+          "pass": true,
+          "reason": "Assertion passed",
+          "score": 1
+        },
+        "defective": {
+          "assertion": {
+            "threshold": 3,
+            "type": "not-levenshtein"
+          },
+          "pass": true,
+          "reason": "Assertion passed",
+          "score": 1
+        }
+      },
+      "source_url": "https://github.com/promptfoo/promptfoo/pull/9722",
+      "status": "VERIFIED",
+      "status_reason": "Defect reproduced: not-levenshtein returned pass:true pre-fix, identical to the un-negated form, and pass:false post-fix. The clean case is unchanged on both sides, so the fix did not simply invert everything."
+    },
+    {
+      "card_id": "CB-005",
+      "card_sha256": "da592e3ff3e8d38a77ce59f03fe4de0cf951c34e53144e2e398ac5132767b319",
+      "fix_commit": "49c0f6d77496",
+      "module": "src/assertions/traceSpanDuration.ts",
+      "not_probed_reason": null,
+      "raw_post_fix": {
+        "clean": {
+          "assertion": {
+            "type": "trace-span-duration",
+            "value": {
+              "max": 100,
+              "percentile": 95
+            }
+          },
+          "pass": false,
+          "reason": "95th percentile duration (5000ms) exceeds threshold 100ms. Slowest spans: c (5000ms)",
+          "score": 0
+        },
+        "counterexample_boundary": {
+          "assertion": {
+            "type": "trace-span-duration",
+            "value": {
+              "max": 100,
+              "percentile": 100
+            }
+          },
+          "pass": false,
+          "reason": "100th percentile duration (5000ms) exceeds threshold 100ms. Slowest spans: c (5000ms)",
+          "score": 0
+        },
+        "defective": {
+          "threw": "trace-span-duration assertion percentile must be a number between 0 and 100"
+        }
+      },
+      "raw_pre_fix": {
+        "clean": {
+          "assertion": {
+            "type": "trace-span-duration",
+            "value": {
+              "max": 100,
+              "percentile": 95
+            }
+          },
+          "pass": false,
+          "reason": "95th percentile duration (5000ms) exceeds threshold 100ms. Slowest spans: c (5000ms)",
+          "score": 0
+        },
+        "counterexample_boundary": {
+          "assertion": {
+            "type": "trace-span-duration",
+            "value": {
+              "max": 100,
+              "percentile": 100
+            }
+          },
+          "pass": false,
+          "reason": "100th percentile duration (5000ms) exceeds threshold 100ms. Slowest spans: c (5000ms)",
+          "score": 0
+        },
+        "defective": {
+          "assertion": {
+            "type": "trace-span-duration",
+            "value": {
+              "max": 100,
+              "percentile": 150
+            }
+          },
+          "pass": true,
+          "reason": "150th percentile duration (undefinedms) is within threshold 100ms",
+          "score": 1
+        }
+      },
+      "source_url": "https://github.com/promptfoo/promptfoo/pull/10089",
+      "status": "VERIFIED",
+      "status_reason": "Defect reproduced: percentile 150 returned pass:true pre-fix with an '(undefinedms)' reason, and throws a named validation error post-fix. The clean p95 case fails correctly on both sides."
+    },
+    {
+      "card_id": "CB-006",
+      "card_sha256": "ec8ba46c0783eb06717d446bc463135af7958577a6962e13ff62cca7d265ac4e",
+      "fix_commit": "2812d7622b2e",
+      "module": "src/external/assertions/deepeval.ts",
+      "not_probed_reason": "handler is not a standalone assertion module at the parent commit; the default threshold lives in src/external/assertions/deepeval.ts behind a matcher that requires a provider. Not probed in this pass rather than probed with a substitute, which would measure the substitute.",
+      "raw_post_fix": null,
+      "raw_pre_fix": null,
+      "source_url": "https://github.com/promptfoo/promptfoo/pull/10142",
+      "status": "INCOMPLETE",
+      "status_reason": "Not probed. At the parent commit the default threshold is not a standalone assertion module; it sits in src/external/assertions/deepeval.ts behind a matcher requiring a provider. Probing a substitute would have measured the substitute."
+    },
+    {
+      "card_id": "CB-007",
+      "card_sha256": "c85f9df9a12872c693b8775ce89d7f6c4c55172edf323eb5e7d7c3dd322a72fe",
+      "fix_commit": "cc8c0c65f137",
+      "module": "src/assertions/gleu.ts",
+      "not_probed_reason": null,
+      "raw_post_fix": {
+        "clean": {
+          "score": 1
+        },
+        "defective": {
+          "score": 0
+        },
+        "empty_output": {
+          "score": 0
+        }
+      },
+      "raw_pre_fix": {
+        "clean": {
+          "score": 1
+        },
+        "defective": {
+          "score": 1
+        },
+        "empty_output": {
+          "threw": "Invalid inputs"
+        }
+      },
+      "source_url": "https://github.com/promptfoo/promptfoo/pull/9850",
+      "status": "VERIFIED",
+      "status_reason": "Two defects reproduced in one card: whitespace-vs-periods scored a perfect 1 pre-fix and 0 post-fix, and an empty output threw 'Invalid inputs' pre-fix and scores 0 post-fix. The clean pair scores 1 on both sides."
+    },
+    {
+      "card_id": "CB-009",
+      "card_sha256": "a93fb6af866c767861acd5fb28e4d15ad13a1cd541805d602e3d6a12a855384d",
+      "fix_commit": "ffd892292644",
+      "module": "src/assertions/openai.ts",
+      "not_probed_reason": null,
+      "raw_post_fix": {
+        "clean": {
+          "pass": true,
+          "reason": "Assertion passed",
+          "score": 1
+        },
+        "defective": {
+          "pass": false,
+          "reason": "OpenAI did not return a valid-looking tools response: [{\"id\":\"call_1\"}]",
+          "score": 0
+        }
+      },
+      "raw_pre_fix": {
+        "clean": {
+          "pass": true,
+          "reason": "Assertion passed",
+          "score": 1
+        },
+        "defective": {
+          "threw": "Cannot read properties of undefined (reading 'name')"
+        }
+      },
+      "source_url": "https://github.com/promptfoo/promptfoo/pull/10076",
+      "status": "VERIFIED",
+      "status_reason": "Defect reproduced: a tool_calls entry with no function object threw TypeError \"Cannot read properties of undefined (reading 'name')\" pre-fix, and returns pass:false with a reason post-fix. The clean call passes on both sides."
+    }
+  ],
+  "review": {
+    "independent_classifications_received": 0,
+    "independent_engineers_required": 2
+  },
+  "state_counts": {
+    "INCOMPLETE": 2,
+    "INVALIDATED": 0,
+    "SURVIVED": 0,
+    "VERIFIED": 6
+  },
+  "what_this_run_does_not_establish": [
+    "operator validity: no independent engineer has classified any card (0 of the required 2)",
+    "detection power: evalmut's operators were not executed against promptfoo in this pass",
+    "generality: eight cards from one repository, chosen by one person",
+    "no percentage, ranking or score is derivable from this bundle and none is published here"
+  ],
+  "what_this_run_establishes": "That each executed card's defect REPRODUCES against promptfoo's own code at the commit before its fix, and is absent at the fix. It does NOT establish that evalmut detects these defects: no evalmut operator was run in this pass. Card validity against real code and detection power are different claims and this bundle supports only the first."
+}
