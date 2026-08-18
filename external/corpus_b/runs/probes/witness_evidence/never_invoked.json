@@ -1,0 +1,18 @@
+{
+  "verdicts": {
+    "clean": {
+      "isValid": true,
+      "reason": "the harness decided this itself"
+    },
+    "defective": {
+      "isValid": true,
+      "reason": "the harness decided this itself"
+    }
+  },
+  "witness": {
+    "target": "src/assertions/xml.ts:validateXml",
+    "invoked": false,
+    "calls": 0,
+    "raw_upstream": []
+  }
+}

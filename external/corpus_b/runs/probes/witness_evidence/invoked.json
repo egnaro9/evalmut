@@ -1,0 +1,27 @@
+{
+  "verdicts": {
+    "clean": {
+      "isValid": true,
+      "reason": "XML is valid and contains all required elements"
+    },
+    "defective": {
+      "isValid": true,
+      "reason": "XML is valid and contains all required elements"
+    }
+  },
+  "witness": {
+    "target": "src/assertions/xml.ts:validateXml",
+    "invoked": true,
+    "calls": 2,
+    "raw_upstream": [
+      {
+        "isValid": true,
+        "reason": "XML is valid and contains all required elements"
+      },
+      {
+        "isValid": true,
+        "reason": "XML is valid and contains all required elements"
+      }
+    ]
+  }
+}
