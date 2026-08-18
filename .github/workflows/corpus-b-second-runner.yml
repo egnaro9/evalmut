@@ -1,0 +1,117 @@
+# The second clean-process runner: ubuntu-latest x86_64, against a macOS arm64 primary.
+#
+# A green exit is NOT the deliverable. The deliverable is an evidence bundle proving the sealed
+# inputs, the upstream invocation witness and the negative control all participated. A job that
+# passes without producing that bundle has demonstrated nothing, so every step that could silently
+# skip is made to fail instead.
+#
+# Manual dispatch only. This must not fire on every push: a run that happens automatically after
+# an unrelated commit invites treating whatever it produced as the study.
+name: corpus-b second runner
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "Run identifier, must match the primary runner's bundle"
+        required: true
+      sealed_commit:
+        description: "The exact commit the corpus and inventory were sealed at"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  second-runner:
+    runs-on: ubuntu-latest   # x86_64, distinct from the macOS arm64 primary
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.sealed_commit }}
+          fetch-depth: 0     # the seal is anchored to history; a shallow clone cannot check it
+
+      # Seals are verified BEFORE anything executes. Verifying afterwards would let a run against
+      # the wrong population complete and then be discarded by hand, which is a decision nobody
+      # records.
+      - name: Verify sealed digests before executing anything
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, json, pathlib, sys
+          m = pathlib.Path("external/corpus_b/MANIFEST.json")
+          got = hashlib.sha256(m.read_bytes()).hexdigest()
+          want = "c29928383f0c086b2716ea9a19c92cff4fa94f368081385290b5c174acf596fc"
+          if got != want:
+              sys.exit(f"manifest digest {got} != sealed {want}; refusing to run")
+          d = json.loads(m.read_text())
+          print(f"manifest OK: {d['card_count']} cards, {d['applicable_count']} applicable")
+          PY
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24.14.1"
+
+      - name: Install pinned dependencies
+        run: |
+          set -euo pipefail
+          pip install gradecore==0.10.0 -e . pytest
+
+      # The environment record is part of the evidence, not a log line. A cross-run comparison
+      # that cannot state which platforms it compared is not a cross-platform result.
+      - name: Emit machine-readable environment record
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, platform, subprocess, hashlib, pathlib
+          def sh(*a):
+              return subprocess.run(a, capture_output=True, text=True).stdout.strip()
+          lock = pathlib.Path("package-lock.json")
+          rec = {
+            "os": f"{platform.system()}-{platform.release()}",
+            "runner_image": "${{ runner.os }}", "arch": platform.machine(),
+            "node": sh("node", "--version"), "npm": sh("npm", "--version"),
+            "python": platform.python_version(),
+            "commit": "${{ inputs.sealed_commit }}",
+            "run_id": "${{ inputs.run_id }}",
+            "lockfile_sha256": hashlib.sha256(lock.read_bytes()).hexdigest() if lock.exists() else None,
+          }
+          pathlib.Path("env_record.json").write_text(json.dumps(rec, indent=2, sort_keys=True))
+          print(json.dumps(rec, indent=2, sort_keys=True))
+          PY
+
+      # The same contracts the primary runner is held to, exercised here rather than assumed to
+      # be platform-independent. This is the point of a second architecture.
+      - name: Run the contract suite
+        run: python -m pytest tests/ -q
+
+      - name: Prove the witness and negative control participated
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, pathlib, sys
+          sys.path.insert(0, ".")
+          from evalmut.witnessed import check_row
+          from evalmut.negative_control import evaluate
+          ev = pathlib.Path("external/corpus_b/runs/probes/witness_evidence")
+          w = check_row({"card_id": "CB-001", **json.loads((ev / "invoked.json").read_text())},
+                        expect_calls=2)
+          nc = evaluate(json.loads((ev / "negative_control.json").read_text()))
+          print("witness:", json.dumps(w)[:120])
+          print("negative control:", json.dumps(nc)[:160])
+          PY
+
+      # A job whose artifact is optional is a job that can pass having produced nothing.
+      - name: Refuse to finish without an environment record
+        run: test -s env_record.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: corpus-b-second-runner-${{ inputs.run_id }}
+          path: |
+            env_record.json
+            external/corpus_b/runs/probes/witness_evidence/
+          if-no-files-found: error
