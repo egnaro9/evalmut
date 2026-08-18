@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "description": "One reviewer's returned classifications. Committed verbatim; wording is never edited.",
+  "required": [
+    "reviewer",
+    "affiliation",
+    "received_at",
+    "classifications"
+  ],
+  "reviewer_fields": {
+    "reviewer": "name as the reviewer gives it",
+    "affiliation": "used only to check independence against another reviewer of the same card",
+    "coauthors_with": "list of names, so a shared-coauthorship conflict is checkable, not assumed",
+    "received_at": "ISO date the response arrived",
+    "declined": "true if the reviewer declined; classifications may then be empty",
+    "meta_verdict": "optional. e.g. 'per-operator validity is the wrong unit of analysis'. Recorded as itself, never forced into a label."
+  },
+  "classification_fields": {
+    "card_id": "CB-0NN",
+    "label": "one of: valid | invalid | unclear | scope-dependent",
+    "named_semantic": "the suite semantic the judgement turns on; required for every label",
+    "rationale": "the reviewer's own words, minimum 40 characters",
+    "disputes_author_applicability": "true if they disagree with the card's own applicable flag",
+    "dispute_rationale": "required when disputes_author_applicability is true"
+  },
+  "labels": [
+    "valid",
+    "invalid",
+    "unclear",
+    "scope-dependent"
+  ],
+  "refusals": [
+    "a classification missing named_semantic or rationale",
+    "a rationale shorter than 40 characters",
+    "a submission of 3 or more classifications where every label is 'valid' AND the mean rationale length is under 120 characters, which is indistinguishable from a rubber stamp",
+    "a card_id not in the frozen manifest",
+    "a duplicate card_id from the same reviewer"
+  ]
+}
