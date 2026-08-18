@@ -141,7 +141,11 @@ def test_the_protocol_states_the_rules_that_are_easy_to_drop_later():
     assert "The card is not edited to reconcile them" in doc
     assert "No tiebreaker is sought to produce a majority" in doc
     assert "Both rationales are preserved verbatim" in doc
-    assert "Gopinath is a co-author" in doc
+    # Pins the RULE, not the names. The named example was removed before publication so a
+    # person would not discover their own eligibility assessment before being asked, and this
+    # assertion followed the names out rather than the constraint.
+    assert "share no affiliation and" in doc and "no co-authorship" in doc
+    assert "the pair would not be two" in doc
     assert "Two-per-card is unreachable" in doc
 
 

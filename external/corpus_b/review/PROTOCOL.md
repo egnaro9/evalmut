@@ -41,8 +41,11 @@ card valid can say so and clear the check by writing real rationales.
 Two reviews of the same card count as independent only if the reviewers share no affiliation and
 no co-authorship. Recorded per pair, not assumed.
 
-**Known constraint:** Alex Groce and Rahul Gopinath do NOT count as independent on the same card.
-Gopinath is a co-author on all four Groce mutation papers checked.
+**A live example of why this is checked rather than assumed:** two of the strongest candidates in
+this field are long-standing co-authors on every relevant paper between them. Either would be a
+fine reviewer; the pair would not be two. Names are held in the private ledger rather than
+published here, since a person should not discover their own eligibility assessment before being
+asked.
 
 Never independent: Erik, any agent acting for him, and anyone who helped write or revise the card
 under review.
@@ -77,8 +80,7 @@ such rather than forced into one of the four labels.
 
 ## 6. Assignment
 
-The ledger lives outside this repository because it names people:
-`~/Desktop/Resume/REVIEWER_LEDGER.md`.
+The assignment ledger lives outside this repository because it names people.
 
 Assign so that no two reviewers of a card share an affiliation or co-authorship, and so each of
 the four `applicable: false` cards reaches at least one reviewer, since those calls are the

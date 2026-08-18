@@ -85,9 +85,12 @@ Silence is not approval.
 
 | reviewer | status |
 |---|---|
-| Fidry | sent 2026-08-17T12:19Z, awaiting response |
-| Groce | do not send before 2026-08-20 |
+| reviewer 1 | request sent 2026-08-17, awaiting response |
+| reviewer 2 | drafted, held until a stated date |
 | independent classifications | **0** |
+
+Reviewers are identified by role here rather than by name. A person should learn they were asked
+by being asked, not by finding themselves on a published schedule.
 
 **The arithmetic, stated so it is not discovered late:** 12 cards x 2 reviews = 24 slots. Two
 reviewers, each asked for 5 to 10 cards, tops out at 10 to 20. Two-per-card is unreachable with
@@ -98,8 +101,9 @@ is the failure this note exists to prevent.
 ## Work allowed before reviews return
 
 1. Prepare the reviewer packet, template, assignment ledger, and conflict/nonresponse protocol.
-   *(`external/corpus_b/REVIEW_TEMPLATE.md` and `~/Desktop/Resume/REVIEWER_LEDGER.md` exist.)*
-2. Queue Groce for 2026-08-20 with the materials frozen. *(Draft ready; scheduled task fires.)*
+   *(`external/corpus_b/review/` holds the template and protocol; the assignment ledger is
+   kept privately outside this repository because it names people.)*
+2. Queue the second request for its held date with the materials frozen. *(Draft ready.)*
 3. Resolve CB-002 only by exercising promptfoo's actual code. *(Done, see above.)*
 4. Investigate whether CB-006 can be invoked in its real parent context. *(Done, it can.)*
 5. Build reusable next-run evidence infrastructure: per-row upstream invocation sentinels, raw
@@ -109,6 +113,12 @@ is the failure this note exists to prevent.
    CI matrix for its OWN suite. None has yet been pointed at a Corpus B run. The denominator
    inventory does not exist in any form.)*
 6. Arrange, but do not reinterpret or aggregate, a second OS and architecture runner.
+   *(`.github/workflows/corpus-b-second-runner.yml` exists and is `workflow_dispatch` only. It
+   has **NEVER EXECUTED**. It parses, it verifies the sealed manifest digest before running
+   anything, and it fails rather than finishing without an environment record, but none of that
+   is the same as having run. No second-platform evidence exists and none may be claimed. The
+   first manual dispatch is a control and probe execution, not a Corpus B detection run, and its
+   artifacts are retained whether it passes or fails.)*
 
 ## Rules for any future run
 
