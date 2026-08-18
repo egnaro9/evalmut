@@ -1,0 +1,126 @@
+{
+  "bundle_version": 1,
+  "environment": {
+    "arch": "arm64",
+    "deps": {
+      "fast-xml-parser": "5.7.2",
+      "js-rouge": "3.2.0",
+      "js-yaml": "5.2.2",
+      "node-sql-parser": "5.4.0"
+    },
+    "node": "v24.14.1",
+    "node_modules": "symlinked from ~/promptfoo/node_modules, single install shared across commits",
+    "npm": "11.11.0",
+    "os": "macOS-26.6-arm64-arm-64bit-Mach-O",
+    "promptfoo_clone": "~/promptfoo (worktree, detached; main checkout never modified)",
+    "python": "3.14.6",
+    "runner": "promptfoo's own vitest, not bare tsx",
+    "tsx": "tsx v4.23.1"
+  },
+  "freeze_commit": "f1c97f3",
+  "harness_change": "run-001 invoked modules through bare tsx, which failed CB-002 on an ESM interop error (js-yaml default export under Node 24). These probes run through promptfoo's OWN vitest runner, which is how promptfoo executes this code itself. That is a harness correction, not a substituted implementation: the code under test is unchanged promptfoo source at the same commits.",
+  "label": "Follow-up probes for the two cards run-001 recorded as INCOMPLETE. This artifact ADDS observations; it does not amend run-001, which remains correct as the record of what that run observed with the harness it had.",
+  "manifest_sha256": "c29928383f0c086b2716ea9a19c92cff4fa94f368081385290b5c174acf596fc",
+  "results": [
+    {
+      "card_id": "CB-002",
+      "fix_commit": "c08cfc454d38",
+      "module": "src/assertions/sql.ts",
+      "prior_status_in_run_001": "INCOMPLETE",
+      "raw_post_fix": {
+        "clean": {
+          "pass": true,
+          "reason": "Assertion passed",
+          "score": 1
+        },
+        "counterexample_ambiguous": {
+          "pass": false,
+          "reason": "SQL statement does not conform to the provided MySQL database syntax.",
+          "score": 0
+        },
+        "defective": {
+          "pass": true,
+          "reason": "Assertion passed",
+          "score": 1
+        }
+      },
+      "raw_pre_fix": {
+        "clean": {
+          "pass": true,
+          "reason": "Assertion passed",
+          "score": 1
+        },
+        "counterexample_ambiguous": {
+          "pass": false,
+          "reason": "SQL statement does not conform to the provided MySQL database syntax.",
+          "score": 0
+        },
+        "defective": {
+          "pass": false,
+          "reason": "SQL statement does not conform to the provided MySQL database syntax.",
+          "score": 0
+        }
+      },
+      "status": "VERIFIED",
+      "status_reason": "Defect reproduced: SELECT DISTINCT name FROM users was REJECTED pre-fix (pass:false, 'does not conform to the provided MySQL database syntax') and accepted post-fix. The clean statement passes on both sides, and the genuinely ambiguous SELECT a b FROM t is rejected on BOTH sides, so the fix narrowed the heuristic rather than disabling it."
+    },
+    {
+      "also_changed_by_the_fix": "The same commit added inverse handling (score >= threshold !== inverse). Noted so a reader does not attribute the whole diff to the threshold.",
+      "card_id": "CB-006",
+      "fix_commit": "2812d7622b2e",
+      "module": "src/external/assertions/deepeval.ts",
+      "prior_status_in_run_001": "INCOMPLETE (not probed)",
+      "raw_post_fix": {
+        "default_threshold": {
+          "pass": false,
+          "raw_upstream_score": 0,
+          "reason": "0 out of 1 conversation windows were relevant",
+          "score": 0
+        },
+        "explicit_half": {
+          "pass": false,
+          "raw_upstream_score": 0,
+          "reason": "0 out of 1 conversation windows were relevant",
+          "score": 0
+        },
+        "explicit_zero": {
+          "pass": true,
+          "raw_upstream_score": 0,
+          "reason": "0 out of 1 conversation windows were relevant",
+          "score": 0
+        },
+        "handler_found": true
+      },
+      "raw_pre_fix": {
+        "default_threshold": {
+          "pass": true,
+          "raw_upstream_score": 0,
+          "reason": "0 out of 1 conversation windows were relevant",
+          "score": 0
+        },
+        "explicit_half": {
+          "pass": false,
+          "raw_upstream_score": 0,
+          "reason": "0 out of 1 conversation windows were relevant",
+          "score": 0
+        },
+        "explicit_zero": {
+          "pass": true,
+          "raw_upstream_score": 0,
+          "reason": "0 out of 1 conversation windows were relevant",
+          "score": 0
+        },
+        "handler_found": true
+      },
+      "status": "VERIFIED",
+      "status_reason": "Feasible after all, and reproduced. With the upstream matcher stubbed to a score of 0, the DEFAULT threshold PASSED pre-fix (threshold || 0 admits a zero score) and FAILS post-fix. An explicitly configured threshold of 0 still passes on BOTH sides, which is the counterexample the card required: the fix used nullish coalescing so a deliberate 0 remains honoured.",
+      "upstream_stub_note": "matchesConversationRelevance is the UPSTREAM scorer, not the code under test; the code under test is the threshold logic. Its raw value is recorded per row as raw_upstream_score rather than inferred from the verdict."
+    }
+  ],
+  "supersedes_nothing": "run-001 (da97125) is unchanged. Its INCOMPLETE states were accurate for its harness. These probes used a different, better harness.",
+  "what_this_does_not_change": [
+    "no evalmut operator was run here either; this is still upstream defect reproduction only",
+    "independent classification remains 0 of the required 2 engineers per card",
+    "no rate, score or detection claim is derivable from this artifact"
+  ]
+}
