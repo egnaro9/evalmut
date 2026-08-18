@@ -1,0 +1,29 @@
+{
+  "card_id": "NEG-CONTROL-1",
+  "negative_control": true,
+  "verdicts": {
+    "clean": {
+      "isValid": true,
+      "reason": "negative control: this scorer passes everything"
+    },
+    "defective": {
+      "isValid": true,
+      "reason": "negative control: this scorer passes everything"
+    }
+  },
+  "witness": {
+    "target": "test/cbprobe/broken_scorer.ts:alwaysPasses",
+    "invoked": true,
+    "calls": 2,
+    "raw_upstream": [
+      {
+        "isValid": true,
+        "reason": "negative control: this scorer passes everything"
+      },
+      {
+        "isValid": true,
+        "reason": "negative control: this scorer passes everything"
+      }
+    ]
+  }
+}
