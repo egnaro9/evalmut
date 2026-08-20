@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "evalmut"
 version = "0.1.0"
-description = "Mutation testing for evals: inject known defects into the system under test and report which grader checks stay green. A surviving mutation is a hole in the eval."
+description = "Mutation testing for evals: inject known defects into the system under test and report which grader checks stay green. A defect that survives the grader is a hole in the eval, and so is a correct output it flags."
 requires-python = ">=3.11"
 readme = "README.md"
 license = { text = "MIT" }
