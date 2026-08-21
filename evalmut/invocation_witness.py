@@ -46,6 +46,7 @@ from .operator import MutationOperator
 from .operators import catalog as _operators_catalog
 from .outcome import Outcome, Polarity, outcome_for
 from .runner import BaselineError, MutationResult, run_case, run_suite
+from . import stamp as _stamp
 from .sentinel import Witness
 from .witnessed import WitnessInconsistent, WitnessMissing, check_row
 
@@ -574,6 +575,12 @@ def summarize_rows(rows: Sequence[WitnessedRow], failures: Sequence[BaselineErro
                            "incomplete": len(incomplete),
                            "not_an_outcome": len(not_outcome)},
             "driver_crosscheck": cross,
+            # Which commit produced these bytes. The last commit touching CODE_PATHS, not HEAD:
+            # a test-only or docs-only commit cannot move an artifact, so it must not move a
+            # stamp. `dirty` is recorded rather than refused, because tests invoke this command
+            # as a subprocess and refusing would make an ordinary edit break the suite. A
+            # consumer publishing a claim from this artifact is expected to refuse a dirty stamp.
+            "stamp": _stamp.evidence(output_paths=("docs/", "external/", "vac/")),
         },
         "ungated": {
             "score": ungated.score if ungated.total.scored else None,

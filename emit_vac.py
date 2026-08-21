@@ -69,10 +69,10 @@ SUITE_INPUTS = {
 # move the stamp (the fleet discipline — results land in a follow-up commit
 # touching only outputs, and CI re-runs the emitter there expecting
 # byte-identity, stamp included).
-CODE_PATHS = ("evalmut", "demos/dogfood_gradecore.py",
-              "external/promptfoo_suite.py",
-              "external/promptfoo_assertions.py",
-              "pyproject.toml", "emit_vac.py")
+# One definition, shared with the witness run's stamp. Two copies would drift, and a drifted
+# stamp is worse than none: it names a commit with authority it does not have.
+sys.path.insert(0, str(ROOT))
+from evalmut.stamp import CODE_PATHS  # noqa: E402
 
 # The only paths allowed to be dirty when stamping: the emitter's own
 # outputs. Anything else dirty means the stamped commit would not contain
