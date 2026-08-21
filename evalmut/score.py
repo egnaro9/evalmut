@@ -51,8 +51,20 @@ class Tally:
     @property
     def score(self) -> float:
         """Caught / applied. 1.0 when there is nothing to catch (vacuously robust);
-        callers that care distinguish that with `applied == 0`."""
+        callers that care distinguish that with `applied == 0`.
+
+        THE TRAP THIS LEAVES FOR CALLERS. 1.0 is convenient arithmetic and a lie in a report:
+        an empty population rendered "100%" in three of this repo's four presentation paths,
+        including the CI one-liner, so a run where NOTHING could be measured read as a perfect
+        score. Zero would be no better; it would claim measured failure. The honest state is
+        undefined, because the denominator is zero. Renderers must call `scored` and print
+        nothing numeric when it is False. `report.py`'s per-grader cell already did this."""
         return 1.0 if self.applied == 0 else self.caught / self.applied
+
+    @property
+    def scored(self) -> bool:
+        """Is there a denominator at all? False means no percentage may be published."""
+        return self.applied > 0
 
     def with_outcome(self, outcome: Outcome) -> "Tally":
         return Tally(

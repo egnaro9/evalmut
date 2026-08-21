@@ -38,7 +38,10 @@ def render(report: Report, *, verbose: bool = False) -> str:
     w("  evalmut — does your eval actually check anything?")
     w(_BAR)
     w(f"  mutation score   {t.score * 100:5.1f}%   "
-      f"({t.caught} caught / {t.applied} applied; {t.na} n/a)")
+      f"({t.caught} caught / {t.applied} applied; {t.na} n/a)"
+      if t.scored else
+      f"  mutation score   UNAVAILABLE   "
+      f"(0 applied; {t.na} n/a) no denominator, so no score")
     if report.crashing_defects:  # the score excludes these — say so, loudly, next to it
         w(f"  ⚠ undetermined   {len(report.crashing_defects)} defect mutation(s) CRASHED the "
           f"grader (excluded from the score — a crash is not a catch)")
@@ -104,7 +107,7 @@ def _section(w, title: str, items, verbose: bool) -> None:
 def render_short(report: Report) -> str:
     """One line, for CI: score, hole counts, exit-worthy."""
     t = report.total
-    return (f"evalmut {t.score*100:.0f}%  "
+    return (f"evalmut {t.score*100:.0f}%  " if t.scored else "evalmut NO-SCORE  ") + (
             f"vacuous={len(report.vacuous)} blind={len(report.blind_spots)} "
             f"error={len(report.errors)} brittle={len(report.brittle_spots)} "
             f"gap={len(report.coverage_gaps)}"
