@@ -58,7 +58,7 @@ jobs:
       - name: Install pinned dependencies
         run: |
           set -euo pipefail
-          pip install gradecore==0.10.0 -e . pytest
+          pip install gradecore==0.10.2 -e . pytest
 
       # The environment record is part of the evidence, not a log line. A cross-run comparison
       # that cannot state which platforms it compared is not a cross-platform result.
