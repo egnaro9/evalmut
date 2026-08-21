@@ -69,3 +69,33 @@ def test_an_unreadable_repo_reports_dirty_rather_than_clean(tmp_path):
     assert stamp.is_dirty(tmp_path) is True, (
         "a non-repository reported clean; an unreadable tree must fail closed")
     assert stamp.code_commit(tmp_path) == "", "a non-repository must not invent a commit"
+
+
+def test_output_only_dirt_reports_clean_including_on_the_first_line(tmp_path):
+    """porcelain's first column is a space for a modified tracked file.
+
+    THE BUG THIS PINS. _git used .strip() on the whole stdout, which eats the leading space of
+    the FIRST line only. `ln[3:]` then returned "ocs/..." instead of "docs/...", the output-path
+    exclusion missed, and a tree dirty only in docs/ reported dirty. It surfaced because writing
+    the witness artifact is itself the first porcelain line, so the artifact recorded dirty on a
+    clean tree. A real repository is used here because the defect lives in the exact bytes git
+    emits, which a mock would have reproduced wrongly."""
+    repo = tmp_path / "r"
+    (repo / "docs").mkdir(parents=True)
+    (repo / "evalmut").mkdir()
+    run = lambda *a: subprocess.run(["git", *a], cwd=repo, check=True, capture_output=True)
+    run("init", "-q")
+    run("config", "user.email", "t@t"); run("config", "user.name", "t")
+    (repo / "docs" / "art.json").write_text("{}\n")
+    (repo / "evalmut" / "mod.py").write_text("x = 1\n")
+    run("add", "-A"); run("commit", "-qm", "seed")
+    assert stamp.is_dirty(repo, ("docs/",)) is False, "a clean tree reported dirty"
+
+    # dirt ONLY in an output path, and it is the first porcelain line
+    (repo / "docs" / "art.json").write_text('{"a": 1}\n')
+    assert stamp.is_dirty(repo, ("docs/",)) is False, (
+        "output-only dirt reported dirty; the leading porcelain column was eaten")
+
+    # dirt in a code path must still report dirty
+    (repo / "evalmut" / "mod.py").write_text("x = 2\n")
+    assert stamp.is_dirty(repo, ("docs/",)) is True, "code dirt reported clean"

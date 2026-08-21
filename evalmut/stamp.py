@@ -32,8 +32,15 @@ _ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 
 def _git(args: list[str], repo: pathlib.Path) -> str:
+    """Raw stdout, trailing newline only.
+
+    NOT .strip(). porcelain encodes status in the first two columns, so ` M path` begins with a
+    space, and stripping the whole output eats it on the FIRST line alone. `ln[3:]` then returns
+    "ocs/..." instead of "docs/...", the output-path exclusion misses, and a tree dirty only in
+    docs/ reports dirty. Cost an hour: the witness artifact recorded dirty on a clean tree,
+    because writing the artifact is itself the first porcelain line."""
     return subprocess.run(["git", *args], cwd=repo, capture_output=True,
-                          text=True, check=True).stdout.strip()
+                          text=True, check=True).stdout.rstrip("\n")
 
 
 def code_commit(repo: pathlib.Path | None = None) -> str:
