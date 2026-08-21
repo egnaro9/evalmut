@@ -316,7 +316,13 @@ def test_every_counted_row_in_the_artifact_carries_both_witnesses(artifact):
 
 def test_the_artifact_names_the_library_version_and_the_decision_call(artifact):
     wp = artifact["witness_protocol"]
-    assert wp["libraries"] == [{"name": "gradecore", "version": "0.10.0"}]
+    # Derived, never typed. This line read `"version": "0.10.0"` and went red the moment the
+    # environment moved to 0.10.2, which is the same defect gradecore 0.10.2 was released to fix:
+    # a hand-maintained version literal drifting from the thing it claims to describe. A test that
+    # pins a version by hand has to be edited on every bump, and the edit is exactly what gets
+    # forgotten.
+    from importlib.metadata import version as _installed
+    assert wp["libraries"] == [{"name": "gradecore", "version": _installed("gradecore")}]
     assert wp["decision_call"]["function"] == "run_case"
     assert wp["decision_call"]["source_anchor"] == "case.grader(mutant)"
     assert wp["clean_control_call"]["source_anchor"] == "self.grader(self.good)"
