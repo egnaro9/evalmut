@@ -129,6 +129,19 @@
       "plain_rows": 269,
       "witnessed_rows": 269,
       "mismatches": 0
+    },
+    "stamp": {
+      "issuer_commit": "8cb21bd",
+      "code_paths": [
+        "evalmut",
+        "demos/dogfood_gradecore.py",
+        "external/promptfoo_suite.py",
+        "external/promptfoo_assertions.py",
+        "pyproject.toml",
+        "emit_vac.py"
+      ],
+      "dirty": false,
+      "rule": "the last commit touching code_paths, not HEAD: a commit that changes only tests, docs or generated output cannot alter these bytes"
     }
   },
   "ungated": {
