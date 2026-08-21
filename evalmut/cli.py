@@ -4,6 +4,7 @@
     evalmut run suite.py --json         # machine-readable results
     evalmut run suite.py --short        # one line, for CI
     evalmut operators                   # list the mined catalog, each with its provenance
+    evalmut witness suite.py --json     # same rows, plus per-row proof the grader ran
 
 A suite module exposes `suite` (a list of EvalCase) and optionally `operators`
 (a list of MutationOperator; defaults to the full mined catalog).
@@ -24,6 +25,7 @@ from . import catalog, run
 from .report import render, render_short
 from .manifest import diff_against as manifest_diff, suite_manifest
 from .diff import diff_runs, headline, score_delta, summarize
+from .invocation_witness import render_witness_short, witness_payload
 from .replay_html import render_replay_html
 from .report_html import render_diff_html, render_html
 from .runner import MutationResult
@@ -104,6 +106,30 @@ def _cmd_run(args) -> int:
     serious = (report.vacuous or report.blind_spots or report.errors
                or report.brittle_spots)
     return 1 if (serious or getattr(report, "baseline_failures", ())) else 0
+
+
+def _cmd_witness(args) -> int:
+    """Run the suite with a per-row invocation witness on the grader.
+
+    Same rows as `run`, with one extra requirement: a row is counted as an outcome only when the
+    clean control and the defective form were both seen entering the grader the suite handed
+    evalmut, and both behaved as the contract they ran under declares. Rows that cannot show that
+    leave the headline denominator and are listed as INCOMPLETE with the reason.
+
+    Exit code: 1 if any row is INCOMPLETE (evidence is missing and the number moved because of
+    it), or on the same serious holes / baseline failures that fail `run`. Missing evidence is a
+    failure, never a default.
+    """
+    suite, operators = _load_suite(args.suite)
+    ops = tuple(operators) if operators is not None else catalog()
+    payload = witness_payload(suite, ops)
+    if args.json:
+        print(json.dumps(payload, indent=2))
+    else:
+        print(render_witness_short(payload))
+    holes = payload["holes"]
+    serious = holes["vacuous"] or holes["blind"] or holes["error"] or holes["brittle"]
+    return 1 if (payload["incomplete"] or serious or payload["baseline_failures"]) else 0
 
 
 def _cmd_diff(args) -> int:
@@ -188,6 +214,11 @@ def main(argv=None) -> int:
     r.add_argument("--html", metavar="FILE",
                    help="write a standalone read-only HTML rendering of this run")
     r.set_defaults(fn=_cmd_run)
+
+    wt = sub.add_parser("witness", help="run with a per-row proof the grader was actually entered")
+    wt.add_argument("suite", help="path to a Python file defining `suite`")
+    wt.add_argument("--json", action="store_true", help="machine-readable output (all rows)")
+    wt.set_defaults(fn=_cmd_witness)
 
     o = sub.add_parser("operators", help="list the mined operator catalog")
     o.add_argument("--json", action="store_true")
