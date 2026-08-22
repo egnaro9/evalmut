@@ -28,6 +28,15 @@ Anything else is UNATTRIBUTED and fails the row closed.
 WHAT IS NOT CLAIMED. This proves the path was ENTERED and what it HANDED BACK. It says nothing
 about whether the grader judged well, and nothing about detection power. A row that is witnessed
 is a row whose numbers are about gradecore. That is the entire claim.
+
+Regenerating the artifact this module produces:
+
+    evalmut witness demos/dogfood_gradecore.py --json    docs/dogfood_gradecore_witnessed.json
+
+Written here rather than remembered elsewhere, because a consumer that publishes a claim from that
+file derives the command from THIS docstring. A module that stops naming the artifact beside the
+command has stopped documenting how to regenerate it, and the consumer refuses rather than
+printing a string someone typed once.
 """
 from __future__ import annotations
 
