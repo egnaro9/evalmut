@@ -6,8 +6,8 @@ One run (re)writes both the canonical committed artifacts and the bundle:
 
     docs/dogfood_gradecore.txt        evalmut run demos/dogfood_gradecore.py
     docs/dogfood_gradecore.json       …same, --json --all (the raw rows)
-    external/promptfoo_findings.txt   evalmut run external/promptfoo_suite.py
-    external/promptfoo_findings.json  …same, --json --all
+    external/promptfoo_ports.txt   evalmut run external/promptfoo_suite.py
+    external/promptfoo_ports.json  …same, --json --all
     docs/operators.json               evalmut operators --json
 
 Each artifact is the exact stdout bytes of the command line a stranger
@@ -44,9 +44,9 @@ ARTIFACTS = (
     (("run", "demos/dogfood_gradecore.py"), "docs/dogfood_gradecore.txt"),
     (("run", "demos/dogfood_gradecore.py", "--json", "--all"),
      "docs/dogfood_gradecore.json"),
-    (("run", "external/promptfoo_suite.py"), "external/promptfoo_findings.txt"),
+    (("run", "external/promptfoo_suite.py"), "external/promptfoo_ports.txt"),
     (("run", "external/promptfoo_suite.py", "--json", "--all"),
-     "external/promptfoo_findings.json"),
+     "external/promptfoo_ports.json"),
     (("operators", "--json"), "docs/operators.json"),
     # The pinned fixture corpus for each suite in the battery. Emitted the same way as every
     # other artifact (real subprocess, exact stdout bytes) so the freshness gate covers the
@@ -178,6 +178,36 @@ def derive(payload: bytes) -> dict:
     return d
 
 
+def _scope(artifact: str) -> str:
+    """The scope VAC 2.5.1 derives from an artifact filename: everything
+    before the first dot. Taken from the same string used as the check's
+    `artifact`, so the published path cannot drift from the file it names."""
+    return artifact.split(".")[0]
+
+
+def _scoped(fields: dict, holes: dict, scope: str) -> dict:
+    """One scope's summary object, flat and collision-free.
+
+    `holes` is flattened up a level because a 0.2 path is exactly
+    <scope>.<field>: nested, its counts would match no pool key and publish
+    UNBOUND. Flattening is safe because every hole class is itself a
+    recomputed field name, so each binds strictly once flat.
+
+    It is not unconditionally safe. `error` is BOTH a hole class and one of
+    the five outcome counts, so a run with grader errors would have the two
+    meet in one namespace. They denote the same rows today, but a summary
+    that silently keeps one of two same-named claims is the shape this
+    protocol exists to refuse, so the collision fails issuance instead."""
+    clash = sorted(set(fields) & set(holes))
+    if clash:
+        raise ValueError(
+            f"summary.{scope}: hole class {clash} collides with a field of "
+            "the same name already published under this scope. A 0.2 path is "
+            "flat, so one would silently replace the other. Publish the hole "
+            "counts under distinct names, or leave them out.")
+    return {**fields, **holes}
+
+
 def _holes(d: dict) -> dict:
     return {cls: d[cls] for cls, _, _ in HOLE_CLASSES if d[cls]}
 
@@ -191,10 +221,10 @@ def build_manifest(artifacts: dict[str, bytes], commit: str) -> str:
 
     gradecore_v = importlib.metadata.version("gradecore")
     dog = derive(artifacts["docs/dogfood_gradecore.json"])
-    pf = derive(artifacts["external/promptfoo_findings.json"])
+    pf = derive(artifacts["external/promptfoo_ports.json"])
     ops = json.loads(artifacts["docs/operators.json"])
     manifest = {
-        "vac_version": "0.1",
+        "vac_version": "0.2",
         "claim": {
             "capability": (
                 "eval-suite mutation testing over a mined operator "
@@ -287,16 +317,36 @@ def build_manifest(artifacts: dict[str, bytes], commit: str) -> str:
                 for home, data in artifacts.items())
         ],
         "results": {
+            # VAC 2.5.1: at vac_version 0.2 a summary number binds on its
+            # FULL path beneath `summary.`, against a pool keyed
+            # <scope>.<field>, where the verifier DERIVES each scope from
+            # that check's own primary evidence filename.
+            #
+            # Three consequences, all visible here. The top keys must BE the
+            # artifact stems, which is why promptfoo_findings.json is now
+            # promptfoo_ports.json: this bundle already published the claim
+            # as `promptfoo_ports`, and 0.2 lets the file own that name
+            # rather than publishing one nobody chose. `holes` is flattened
+            # up one level, because a third segment matches no pool key and
+            # would publish an UNBOUND number. And `operators` moves under
+            # BOTH scopes rather than sitting at the top, where one segment
+            # binds to nothing.
+            #
+            # operators is a property of the SHARED catalog both checks
+            # read, so neither run owns it. Publishing it under both is not
+            # redundancy for its own sake: each value is separately bound to
+            # the catalog its own check actually read, so if the two ever
+            # diverge the summary shows two numbers instead of hiding the
+            # disagreement behind an arbitrary pick. Their equality today is
+            # evidence, not an invariant.
             "summary": {
-                "dogfood_gradecore": {
-                    "score_3": dog["score_3"], "caught": dog["caught"],
-                    "applied": dog["applied"], "na": dog["na"],
-                    "holes": _holes(dog)},
-                "promptfoo_ports": {
-                    "score_3": pf["score_3"], "caught": pf["caught"],
-                    "applied": pf["applied"], "na": pf["na"],
-                    "holes": _holes(pf)},
-                "operators": len(ops),
+                _scope(name): _scoped(
+                    {"score_3": d["score_3"], "caught": d["caught"],
+                     "applied": d["applied"], "na": d["na"],
+                     "operators": len(ops)},
+                    _holes(d), _scope(name))
+                for name, d in (("dogfood_gradecore.json", dog),
+                                ("promptfoo_ports.json", pf))
             },
             "checks": [
                 # `render` binds the human-readable .txt to the payload it
@@ -310,10 +360,10 @@ def build_manifest(artifacts: dict[str, bytes], commit: str) -> str:
                  "render": "dogfood_gradecore.txt",
                  "expect": {**dog, "operators": len(ops)}},
                 {"profile": "evalmut-run-v1",
-                 "artifact": "promptfoo_findings.json",
+                 "artifact": "promptfoo_ports.json",
                  "catalog": "operators.json",
                  "fixtures": "promptfoo_fixtures.json",
-                 "render": "promptfoo_findings.txt",
+                 "render": "promptfoo_ports.txt",
                  "expect": {**pf, "operators": len(ops)}},
             ],
         },
@@ -326,8 +376,8 @@ def build_manifest(artifacts: dict[str, bytes], commit: str) -> str:
                 "( cd issuer && python emit_vac.py )",
                 "for f in dogfood_fixtures.json dogfood_gradecore.txt "
                 "dogfood_gradecore.json operators.json "
-                "promptfoo_fixtures.json promptfoo_findings.txt "
-                "promptfoo_findings.json vac.json; "
+                "promptfoo_fixtures.json promptfoo_ports.txt "
+                "promptfoo_ports.json vac.json; "
                 "do cmp issuer/vac/$f $f || exit 1; done",
             ],
             "expected": (
@@ -343,7 +393,35 @@ def build_manifest(artifacts: dict[str, bytes], commit: str) -> str:
                 "perturb the rendered report glyphs."),
         },
     }
+    _refuse_unbindable_summary(manifest)
     return json.dumps(manifest, indent=1) + "\n"
+
+
+def _refuse_unbindable_summary(manifest: dict) -> None:
+    """Every published number must sit at EXACTLY <scope>.<field>, and every
+    scope must be an artifact this bundle actually checks.
+
+    A third level does not error anywhere downstream: it matches no pool key,
+    and the verifier then reports "no check recomputes it" about a number a
+    check plainly recomputes. That is a true refusal with a misleading cause,
+    found by a stranger rather than here."""
+    scopes = {_scope(c["artifact"]) for c in manifest["results"]["checks"]}
+    for scope, fields in manifest["results"]["summary"].items():
+        if scope not in scopes:
+            raise ValueError(
+                f"summary scope {scope!r} is not an artifact this bundle "
+                f"checks ({sorted(scopes)}). A 0.2 scope is DERIVED from an "
+                "evidence filename; it cannot be chosen.")
+        if not isinstance(fields, dict):
+            raise ValueError(
+                f"summary.{scope} must be an object of <field>: <number>, "
+                f"got {type(fields).__name__}.")
+        for field, value in fields.items():
+            if isinstance(value, (dict, list)):
+                raise ValueError(
+                    f"summary.{scope}.{field} nests deeper than <scope>."
+                    "<field>, so no pool key can match it and it would be "
+                    "published UNBOUND. Flatten it or leave it out.")
 
 
 def emit() -> None:
