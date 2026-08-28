@@ -1,5 +1,5 @@
 {
- "vac_version": "0.1",
+ "vac_version": "0.2",
  "claim": {
   "capability": "eval-suite mutation testing over a mined operator battery: gradecore's own grader-family suite scores 42/46 with 4 holes, and the committed ports of promptfoo's documented deterministic assertions score 9/17 with 8 holes \u2014 every number recomputable from committed per-mutation rows",
   "scope": "exactly the two committed suites at the stamped commit \u2014 demos/dogfood_gradecore.py (gradecore 0.10.2's grader families, their documented scoping the ground truth) and external/promptfoo_suite.py (committed ports of promptfoo's documented deterministic assertions) \u2014 mutated by the operator battery pinned in operators.json and graded by each suite's own graders; deterministic throughout: no LLM judge, no sampling, no network, no clock",
@@ -18,12 +18,12 @@
   "version": {
    "evalmut": "0.1.0",
    "gradecore": "0.10.2",
-   "suites_commit": "4212cb4"
+   "suites_commit": "a1935f1"
   }
  },
  "protocol": {
   "issuer": "egnaro9/evalmut",
-  "issuer_commit": "4212cb4",
+  "issuer_commit": "a1935f1",
   "task": "mined-operator mutation battery over the two committed suites",
   "hashes": {
    "dogfood_suite_sha256": "a91270baa80366b749c15ac9e131aaa2f4ec9802d0534d56c35fcb433f42aa68",
@@ -51,16 +51,16 @@
    "sha256": "640d7be500c49c7a0ae14e6f6b55d1c7be03c6917924261d0fa1988381d4fa32"
   },
   {
-   "path": "promptfoo_findings.json",
+   "path": "promptfoo_fixtures.json",
+   "sha256": "0879dada0e0eab5881f62aa47402b7e3c8511a35e9e29f09a5ee1feed5b202e1"
+  },
+  {
+   "path": "promptfoo_ports.json",
    "sha256": "4ea78e027e88edfa66b164af212139f126cbf266e437bee2015415a8f7bbe371"
   },
   {
-   "path": "promptfoo_findings.txt",
+   "path": "promptfoo_ports.txt",
    "sha256": "003a3b1ac8098fbb4e40e08ec9e5f83e9869f41c5305511456a5268cb01bd48b"
-  },
-  {
-   "path": "promptfoo_fixtures.json",
-   "sha256": "0879dada0e0eab5881f62aa47402b7e3c8511a35e9e29f09a5ee1feed5b202e1"
   }
  ],
  "results": {
@@ -70,23 +70,20 @@
     "caught": 42,
     "applied": 46,
     "na": 223,
-    "holes": {
-     "blind": 2,
-     "coverage_gap": 2
-    }
+    "operators": 25,
+    "blind": 2,
+    "coverage_gap": 2
    },
    "promptfoo_ports": {
     "score_3": 0.529,
     "caught": 9,
     "applied": 17,
     "na": 115,
-    "holes": {
-     "vacuous": 2,
-     "blind": 4,
-     "coverage_gap": 2
-    }
-   },
-   "operators": 25
+    "operators": 25,
+    "vacuous": 2,
+    "blind": 4,
+    "coverage_gap": 2
+   }
   },
   "checks": [
    {
@@ -114,10 +111,10 @@
    },
    {
     "profile": "evalmut-run-v1",
-    "artifact": "promptfoo_findings.json",
+    "artifact": "promptfoo_ports.json",
     "catalog": "operators.json",
     "fixtures": "promptfoo_fixtures.json",
-    "render": "promptfoo_findings.txt",
+    "render": "promptfoo_ports.txt",
     "expect": {
      "caught": 9,
      "missed": 8,
@@ -138,13 +135,13 @@
   ]
  },
  "replay": {
-  "issuer_commit": "4212cb4",
+  "issuer_commit": "a1935f1",
   "commands": [
    "git clone https://github.com/egnaro9/evalmut issuer",
-   "git -C issuer checkout 4212cb4",
+   "git -C issuer checkout a1935f1",
    "python -m pip install gradecore==0.10.2 ./issuer",
    "( cd issuer && python emit_vac.py )",
-   "for f in dogfood_fixtures.json dogfood_gradecore.txt dogfood_gradecore.json operators.json promptfoo_fixtures.json promptfoo_findings.txt promptfoo_findings.json vac.json; do cmp issuer/vac/$f $f || exit 1; done"
+   "for f in dogfood_fixtures.json dogfood_gradecore.txt dogfood_gradecore.json operators.json promptfoo_fixtures.json promptfoo_ports.txt promptfoo_ports.json vac.json; do cmp issuer/vac/$f $f || exit 1; done"
   ],
   "expected": "every command exits 0 and every cmp stays silent: the emitter re-runs the whole battery at the stamped commit and re-emits all seven artifacts plus vac.json byte-identical to this bundle (commands run from the bundle directory). Inside the emitter each `evalmut run` exits 1 BY DESIGN \u2014 the found holes fail evalmut's own CI gate; the finding is the result \u2014 and the emitter treats exit 0 and 1 both as success. The emitter forces UTF-8 output in its subprocesses, so locale cannot perturb the rendered report glyphs."
  }
