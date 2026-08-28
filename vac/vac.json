@@ -93,6 +93,7 @@
     "profile": "evalmut-run-v1",
     "artifact": "dogfood_gradecore.json",
     "catalog": "operators.json",
+    "fixtures": "dogfood_fixtures.json",
     "render": "dogfood_gradecore.txt",
     "expect": {
      "caught": 42,
@@ -115,6 +116,7 @@
     "profile": "evalmut-run-v1",
     "artifact": "promptfoo_findings.json",
     "catalog": "operators.json",
+    "fixtures": "promptfoo_fixtures.json",
     "render": "promptfoo_findings.txt",
     "expect": {
      "caught": 9,
@@ -142,8 +144,8 @@
    "git -C issuer checkout 4212cb4",
    "python -m pip install gradecore==0.10.2 ./issuer",
    "( cd issuer && python emit_vac.py )",
-   "for f in dogfood_gradecore.txt dogfood_gradecore.json operators.json promptfoo_findings.txt promptfoo_findings.json vac.json; do cmp issuer/vac/$f $f || exit 1; done"
+   "for f in dogfood_fixtures.json dogfood_gradecore.txt dogfood_gradecore.json operators.json promptfoo_fixtures.json promptfoo_findings.txt promptfoo_findings.json vac.json; do cmp issuer/vac/$f $f || exit 1; done"
   ],
-  "expected": "every command exits 0 and every cmp stays silent: the emitter re-runs the whole battery at the stamped commit and re-emits all five artifacts plus vac.json byte-identical to this bundle (commands run from the bundle directory). Inside the emitter each `evalmut run` exits 1 BY DESIGN \u2014 the found holes fail evalmut's own CI gate; the finding is the result \u2014 and the emitter treats exit 0 and 1 both as success. The emitter forces UTF-8 output in its subprocesses, so locale cannot perturb the rendered report glyphs."
+  "expected": "every command exits 0 and every cmp stays silent: the emitter re-runs the whole battery at the stamped commit and re-emits all seven artifacts plus vac.json byte-identical to this bundle (commands run from the bundle directory). Inside the emitter each `evalmut run` exits 1 BY DESIGN \u2014 the found holes fail evalmut's own CI gate; the finding is the result \u2014 and the emitter treats exit 0 and 1 both as success. The emitter forces UTF-8 output in its subprocesses, so locale cannot perturb the rendered report glyphs."
  }
 }

@@ -1,6 +1,6 @@
 """Emit evalmut's own results as a CLOSED VAC bundle (vac-protocol SPEC
 v0.1, profile evalmut-run-v1): `vac/` = `vac.json` plus byte-copies of
-exactly the five artifacts the manifest lists, nothing else.
+exactly the seven artifacts the manifest lists, nothing else.
 
 One run (re)writes both the canonical committed artifacts and the bundle:
 
@@ -306,11 +306,13 @@ def build_manifest(artifacts: dict[str, bytes], commit: str) -> str:
                 {"profile": "evalmut-run-v1",
                  "artifact": "dogfood_gradecore.json",
                  "catalog": "operators.json",
+                 "fixtures": "dogfood_fixtures.json",
                  "render": "dogfood_gradecore.txt",
                  "expect": {**dog, "operators": len(ops)}},
                 {"profile": "evalmut-run-v1",
                  "artifact": "promptfoo_findings.json",
                  "catalog": "operators.json",
+                 "fixtures": "promptfoo_fixtures.json",
                  "render": "promptfoo_findings.txt",
                  "expect": {**pf, "operators": len(ops)}},
             ],
@@ -322,15 +324,16 @@ def build_manifest(artifacts: dict[str, bytes], commit: str) -> str:
                 f"git -C issuer checkout {commit}",
                 f"python -m pip install gradecore=={gradecore_v} ./issuer",
                 "( cd issuer && python emit_vac.py )",
-                "for f in dogfood_gradecore.txt dogfood_gradecore.json "
-                "operators.json promptfoo_findings.txt "
+                "for f in dogfood_fixtures.json dogfood_gradecore.txt "
+                "dogfood_gradecore.json operators.json "
+                "promptfoo_fixtures.json promptfoo_findings.txt "
                 "promptfoo_findings.json vac.json; "
                 "do cmp issuer/vac/$f $f || exit 1; done",
             ],
             "expected": (
                 "every command exits 0 and every cmp stays silent: the "
                 "emitter re-runs the whole battery at the stamped commit "
-                "and re-emits all five artifacts plus vac.json "
+                "and re-emits all seven artifacts plus vac.json "
                 "byte-identical to this bundle (commands run from the "
                 "bundle directory). Inside the emitter each `evalmut run` "
                 "exits 1 BY DESIGN — the found holes fail evalmut's own "
