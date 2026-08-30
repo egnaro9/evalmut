@@ -18,12 +18,12 @@
   "version": {
    "evalmut": "0.1.0",
    "gradecore": "0.10.2",
-   "suites_commit": "a1935f1"
+   "suites_commit": "d620efd"
   }
  },
  "protocol": {
   "issuer": "egnaro9/evalmut",
-  "issuer_commit": "a1935f1",
+  "issuer_commit": "d620efd",
   "task": "mined-operator mutation battery over the two committed suites",
   "hashes": {
    "dogfood_suite_sha256": "a91270baa80366b749c15ac9e131aaa2f4ec9802d0534d56c35fcb433f42aa68",
@@ -135,10 +135,10 @@
   ]
  },
  "replay": {
-  "issuer_commit": "a1935f1",
+  "issuer_commit": "d620efd",
   "commands": [
    "git clone https://github.com/egnaro9/evalmut issuer",
-   "git -C issuer checkout a1935f1",
+   "git -C issuer checkout d620efd",
    "python -m pip install gradecore==0.10.2 ./issuer",
    "( cd issuer && python emit_vac.py )",
    "for f in dogfood_fixtures.json dogfood_gradecore.txt dogfood_gradecore.json operators.json promptfoo_fixtures.json promptfoo_ports.txt promptfoo_ports.json vac.json; do cmp issuer/vac/$f $f || exit 1; done"
