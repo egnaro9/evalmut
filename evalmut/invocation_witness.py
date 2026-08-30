@@ -43,6 +43,7 @@ from __future__ import annotations
 import dataclasses
 import hashlib
 import importlib.metadata as _md
+import inspect
 import linecache
 import os
 import sys
@@ -150,6 +151,35 @@ def _pkg_relative(path: str) -> str:
     return os.path.basename(p)
 
 
+def _source_fingerprint(code) -> Optional[str]:
+    """A fingerprint of the grader's SOURCE TEXT.
+
+    This field answers "is this the same grader implementation". Source text answers that
+    portably; compiled bytecode does not. It used to be `sha256(code.co_code)`, which answers a
+    different question — "is this the same bytecode on THIS interpreter" — and CPython changes
+    bytecode between minor versions. The committed artifact was generated on 3.14 and verified on
+    a 3.11/3.12 matrix, so the freshness gate could never pass, and did not once between
+    2026-08-21 and 2026-08-30. Pinning the gradecore version did not help and could not: the
+    source file was byte-identical across both, and the interpreter was the variable.
+
+    Newlines are normalized so a checkout with other line endings fingerprints the same. Nothing
+    else is: indentation, comments and blank lines are part of a definition, and normalizing them
+    away would let two different graders claim one identity.
+
+    None when the source cannot be resolved (a C function, an exec'd definition, a source file
+    that is not shipped). None is honest about not knowing; it is not a fallback value, and two
+    unresolvable callables sharing it assert nothing about each other.
+    """
+    if code is None:
+        return None
+    try:
+        src = inspect.getsource(code)
+    except (OSError, TypeError):
+        return None
+    src = src.replace("\r\n", "\n").replace("\r", "\n")
+    return hashlib.sha256(src.encode("utf-8")).hexdigest()[:16]
+
+
 def identify(fn: Callable) -> dict:
     """The fully qualified identity of the callable that will be witnessed.
 
@@ -173,8 +203,7 @@ def identify(fn: Callable) -> dict:
         "identity": f"{module}.{qualname}" if module else str(qualname),
         "defined_at": (f"{_pkg_relative(code.co_filename)}:{code.co_firstlineno}"
                        if code is not None else None),
-        "code_sha256": (hashlib.sha256(code.co_code).hexdigest()[:16]
-                        if code is not None else None),
+        "code_sha256": _source_fingerprint(code),
         "library": top or None,
         "library_version": version,
     }
