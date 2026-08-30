@@ -131,7 +131,7 @@
       "mismatches": 0
     },
     "stamp": {
-      "issuer_commit": "772bd93",
+      "issuer_commit": "a1935f1",
       "code_paths": [
         "evalmut",
         "demos/dogfood_gradecore.py",
