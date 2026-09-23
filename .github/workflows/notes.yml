@@ -1,0 +1,79 @@
+name: notes
+# Weekly drift tripwire, deliberately NOT what ci.yml does.
+#
+# ci.yml pins gradecore==0.10.2 because the committed findings are ABOUT that
+# version, and a newer gradecore that widened a grader would rightly change
+# them. This job installs gradecore from main instead and reports when the hole
+# set diverges from the committed baseline. A grader that quietly widened is
+# exactly what an eval owner needs told, and this says so the week it happens.
+#
+# It writes notes/findings.json, which model-drift reads and turns into a draft
+# post for review. Most weeks that file is an empty list, which is correct: a
+# quiet week is a result, not a gap.
+on:
+  schedule:
+    # Sundays, so a finding is waiting on Monday rather than mid-week.
+    - cron: "11 6 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: notes
+  cancel-in-progress: false
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+
+      # gradecore from main, NOT the pin. That difference is the whole job.
+      - name: install evalmut against gradecore main
+        run: |
+          pip install -e .
+          pip install "gradecore @ git+https://github.com/egnaro9/gradecore@main"
+          # Optional target dependencies. A target whose deps are missing is
+          # reported as a problem rather than silently skipped, so a target
+          # dropping out of the sweep cannot look like a quiet week.
+          pip install pydantic autoevals deepeval || true
+          python -c "import gradecore; print('gradecore', gradecore.__version__)"
+
+      - name: which graders drifted?
+        id: emit
+        run: python notes/emit_findings.py --stamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+      # Baselines are NOT auto-advanced. If they were, a drift would be
+      # recorded and immediately forgotten, and the finding would be reported
+      # exactly once with nothing left on disk to show what it moved from.
+      # Erik advances a baseline by hand when he has accepted the change.
+      - name: commit the emitted findings
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add notes/findings.json notes/baselines
+          git diff --cached --quiet && { echo "nothing changed"; exit 0; }
+          git commit -m "notes: refresh grader-drift findings [skip ci]"
+          for attempt in 1 2 3; do
+            if git push; then echo "pushed on attempt $attempt"; exit 0; fi
+            git pull --rebase origin main || exit 1
+          done
+          echo "::error::could not push the emitted findings after 3 attempts"
+          exit 1
+
+      - name: say so when nothing drifted
+        run: |
+          n=$(python -c "import json;print(len(json.load(open('notes/findings.json'))['findings']))")
+          {
+            echo "### $n grader-drift finding(s)"
+            echo
+            if [ "$n" = "0" ]; then
+              echo "Nothing diverged from the committed baselines under gradecore main."
+              echo "That is the expected outcome most weeks."
+            else
+              python -c "import json;[print('- '+f['headline']) for f in json.load(open('notes/findings.json'))['findings']]"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
