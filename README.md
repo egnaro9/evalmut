@@ -26,8 +26,8 @@ $ evalmut run suite.py   # your suite; see 'Install & use' below
 ────────────────────────────────────────────────────────────────────────
   evalmut. Does your eval actually check anything?
 ────────────────────────────────────────────────────────────────────────
-  mutation score    91.4%   (32 caught / 35 applied; 150 n/a)
-  holes            3  (1 blind, 2 coverage-gap)
+  mutation score    91.3%   (42 caught / 46 applied; 223 n/a)
+  holes            4  (2 blind, 2 coverage-gap)
 
   BLIND SPOTS: a real defect shipped green; the check is present and broken
     • contains / contains
