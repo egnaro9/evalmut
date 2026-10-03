@@ -13,13 +13,13 @@ jobs:
         os: [ubuntu-latest, macos-14]
         python-version: ["3.11", "3.12"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0   # test_committed_stamp_is_reachable_from_head walks history to
                            # confirm vac.json's issuer_commit is still an ancestor of HEAD.
                            # A shallow clone cannot see that, and the check REFUSES rather
                            # than guessing, so this job needs full history too.
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
       # gradecore is pinned to the version the committed findings are ABOUT:
@@ -36,12 +36,12 @@ jobs:
     # diff-only gate is blind to files the emitter grew.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0   # the stamp is the last CODE-touching commit; a
                            # shallow clone collapses that to HEAD and fails
                            # the byte-identity check on the stamp line alone
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - run: pip install gradecore==0.10.2 -e .

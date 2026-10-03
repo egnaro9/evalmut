@@ -26,7 +26,7 @@ jobs:
   second-runner:
     runs-on: ubuntu-latest   # x86_64, distinct from the macOS arm64 primary
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.sealed_commit }}
           fetch-depth: 0     # the seal is anchored to history; a shallow clone cannot check it
@@ -48,10 +48,10 @@ jobs:
           print(f"manifest OK: {d['card_count']} cards, {d['applicable_count']} applicable")
           PY
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "24.14.1"
 
@@ -108,7 +108,7 @@ jobs:
       - name: Refuse to finish without an environment record
         run: test -s env_record.json
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: corpus-b-second-runner-${{ inputs.run_id }}
           path: |
