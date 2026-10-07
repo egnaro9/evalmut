@@ -170,3 +170,53 @@ def test_every_scorer_identity_records_how_it_was_discovered(sealed):
     assert inv.discovery_method
     for r in inv.rows:
         assert r.scorer.discovered_by
+
+
+# ---------------------------------------------------------------- the seal check itself
+# A mutation audit found that aggregate()'s FIRST line, the digest comparison, could be
+# deleted with the suite green. All four aggregate() call sites and all four
+# gated_aggregate() call sites pass a MATCHING digest, so the guard was never exercised.
+# aggregate() is documented as "the only sanctioned way to produce a rate", and the thing it
+# exists to refuse is a denominator edited after seeing results.
+
+def test_aggregate_refuses_an_inventory_that_drifted_from_its_seal(sealed):
+    """The post-seal edit, which is the whole point of sealing.
+
+    Seal three scorers with two drivable, then move one INCLUDED scorer to UNSUPPORTED after
+    seeing results and aggregate against the ORIGINAL digest. Without the check that publishes
+    1/1 = a perfect rate, stamped with the seal of an inventory that said 1/2.
+    """
+    inv, dig, disc = sealed
+    a, b, c = disc
+    drifted = make({a.id: inc(a), b.id: exc(b), c.id: exc(c)}, disc)
+    assert drifted.digest != dig, "the fixture must actually drift, or this proves nothing"
+    assert drifted.denominator("drivable") == 1 and inv.denominator("drivable") == 2
+
+    with pytest.raises(I.InventoryError) as e:
+        I.aggregate(1, drifted, dig, "drivable")
+    assert "does not match the seal" in str(e.value)
+
+
+def test_the_published_rate_carries_the_digest_of_the_inventory_it_measured(sealed):
+    """The other half: a rate is only meaningful with the seal it was computed under, so the
+    returned digest must be the inventory's own and not whatever was passed in."""
+    inv, dig, _ = sealed
+    got = I.aggregate(1, inv, dig, "drivable")
+    assert got["inventory_digest"] == inv.digest == dig
+
+
+def test_a_declaration_for_an_undiscovered_scorer_fails_closed(sealed):
+    """build()'s `extra` guard had no test while its `missing` sibling did.
+
+    Note on scope, because the original report overstated this: build() iterates the
+    DISCOVERED set, so a phantom declaration is dropped rather than padding the population,
+    and the digest is unchanged. The defect is that a declaration nobody discovered passes
+    silently instead of failing closed, which is a contract violation rather than a rate
+    change.
+    """
+    _, _, disc = sealed
+    a, b, c = disc
+    phantom = sc("neverDiscovered")
+    with pytest.raises(I.InventoryError) as e:
+        make({a.id: inc(a), b.id: inc(b), c.id: exc(c), phantom.id: inc(phantom)}, disc)
+    assert "not discovered" in str(e.value).lower() or "extra" in str(e.value).lower()

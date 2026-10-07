@@ -854,3 +854,45 @@ def test_the_template_demo_runs_and_finds_something():
     report = run(list(mod.suite))
     assert report.total.applied > 0, "the template applied no mutations"
     assert report.holes, "the template's example grader came back clean; it should demonstrate a hole"
+
+
+# ── the forged-verdict class, which was entirely unasserted ──────────────────
+# A mutation audit found zero matches across tests/ for forged_verdicts, LIVENESS,
+# verdict_channel or op_type_for. Both Report.forged_verdicts (score.py:114) and
+# Operator.op_type_for (operator.py:79) survived deletion with the suite green.
+#
+# This is the most severe thing evalmut can report. A survived LIVENESS mutation means the
+# grader honoured a verdict written by the thing it was grading, so nothing that grader has
+# ever reported is falsifiable, including its passes. Under the deletion it did not even
+# degrade to a blind spot: it vanished from the report entirely.
+
+def _tool_policy_case(**kw):
+    """A tool-policy case whose denylist omits the verdict channel, so calling that channel
+    passes the grader. judges=("tool_calls",) because run_case skips any operator whose field
+    the case does not declare as judged."""
+    return EvalCase("forge", tool_misuse(["drop_table"]),
+                    GradeInput(text="done", expected="drop_table", tool_calls=()),
+                    tags=("tool_policy",), judges=("tool_calls",), **kw)
+
+
+def test_a_grader_that_honours_a_written_verdict_is_a_forged_verdict():
+    r = run([_tool_policy_case(verdict_channel=("write_verdict_file",))])
+    assert [h.operator_id for h in r.forged_verdicts] == ["inject_denylisted_tool"]
+    assert all(h.op_type is OperatorType.LIVENESS for h in r.forged_verdicts)
+
+
+def test_a_forged_verdict_is_filed_apart_from_a_blind_spot():
+    """They carry opposite instructions. "Fix the check" is wrong for a forged verdict:
+    while the channel stays writable, no verdict from that grader means anything."""
+    r = run([_tool_policy_case(verdict_channel=("write_verdict_file",))])
+    assert r.forged_verdicts and not r.blind_spots and not r.vacuous
+
+
+def test_without_a_declared_channel_the_same_operator_is_an_ordinary_kill():
+    """op_type_for is per-case. Replacing the hook with the static op_type reclassified every
+    forged verdict, so both sides of the hook are pinned here: the same operator on the same
+    grader is a KILL when no channel is declared, and the denylist path catches it."""
+    r = run([_tool_policy_case()])
+    assert not r.forged_verdicts
+    hit = [x for x in r.results if x.operator_id == "inject_denylisted_tool"]
+    assert hit and hit[0].op_type is OperatorType.KILL and hit[0].outcome is Outcome.CAUGHT
