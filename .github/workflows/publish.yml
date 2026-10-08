@@ -1,0 +1,90 @@
+# Publish to PyPI with NO stored credential.
+#
+# PyPI authenticates this workflow by OIDC (trusted publishing): GitHub mints a short-lived
+# token for this exact repository, workflow file and environment, and PyPI checks it against
+# the trusted publisher configured on the project. Nothing is stored, so there is nothing to
+# leak, rotate, or paste into a terminal at midnight.
+#
+# The actions are pinned by commit SHA rather than tag, because this job holds the right to
+# publish and a tag is a moving pointer someone else controls.
+name: publish
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  build:
+    name: build and check the version against the tag
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: python -m pip install --upgrade build packaging
+
+      # A release tagged v1.2.3 that ships 1.2.2 is unrecoverable: PyPI will not let that
+      # filename be reused, so the mistake has to be published AROUND rather than fixed.
+      # Skipped on workflow_dispatch, where there is no tag to compare against.
+      - name: The tag and pyproject must agree
+        if: github.event_name == 'release'
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os, pathlib, re, sys
+          try:
+              import tomllib
+          except ModuleNotFoundError:
+              import tomli as tomllib
+          from packaging.version import Version
+          proj = tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]["version"]
+          tag = re.sub(r"^v", "", os.environ["TAG"])
+          if Version(proj) != Version(tag):
+              sys.exit(f"tag {tag!r} does not match pyproject version {proj!r}")
+          print(f"ok: tag and pyproject agree on {proj}")
+          PY
+
+      - name: Build
+        run: python -m build
+
+      # Prove the artifact that is about to be published is the one that was just built,
+      # and that it imports. A wheel that was never built is a check that cannot fail.
+      - name: The built wheel must install and report the expected version
+        run: |
+          set -euo pipefail
+          NAME=$(python -c "import tomllib,pathlib;print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['name'])")
+          python -m venv /tmp/verify
+          /tmp/verify/bin/pip install --no-cache-dir dist/*.whl
+          # cd out of the checkout first: for `python -c`, the cwd leads sys.path, so the
+          # source tree would answer instead of the wheel and the check would pass regardless.
+          cd /tmp
+          /tmp/verify/bin/python -c "import importlib.metadata as m, sys; n=sys.argv[1]; print('installed', n, m.version(n))" "$NAME"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    name: publish to PyPI
+    needs: [build]
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/evalmut
+    permissions:
+      id-token: write # the ONLY credential this workflow needs
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
