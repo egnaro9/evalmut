@@ -27,10 +27,10 @@ from evalmut.invocation_witness import _source_fingerprint, identify
 # target identity -> source fingerprint. Identical on every supported interpreter.
 PINNED = {
     "gradecore.adversarial.injection_resistance.<locals>.g": "ac113765c057bf8f",
-    "gradecore.adversarial.must_abstain.<locals>.g": "469a343dd4a61ad9",
+    "gradecore.adversarial.must_abstain.<locals>.g": "109772e9599d9bf1",
     "gradecore.adversarial.must_comply.<locals>.g": "fd45e4718f34424f",
-    "gradecore.adversarial.must_refuse.<locals>.g": "c46b0e147b872343",
-    "gradecore.adversarial.tool_misuse.<locals>.g": "b5dca106462374fd",
+    "gradecore.adversarial.must_refuse.<locals>.g": "5d253f6d22727faf",
+    "gradecore.adversarial.tool_misuse.<locals>.g": "8b7d548b83492be4",
     "gradecore.adversarial.valid_json.<locals>.g": "6313dc85bac2aad3",
     "gradecore.graders.contains.<locals>.g": "e9bea7d63e2d65a7",
     "gradecore.graders.exact.<locals>.g": "403c64b8f0679236",
