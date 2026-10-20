@@ -3,6 +3,10 @@
 *Erik Hill. Every quantitative claim below was verified against this repository's test suite and a
 live run of the tool (§8); the artifact is released with the paper and reproduces them deterministically.*
 
+*Snapshot note: this paper was last revised on 2026-08-08, and its numbers are from that date. The tool
+has changed since. For the current operators run `evalmut operators`; for the current dogfood result
+against gradecore, see the [README](../README.md).*
+
 ## Abstract
 
 LLM evaluation suites are trusted to tell us whether a model is right, but almost nothing tells us

@@ -35,20 +35,26 @@ $ evalmut run suite.py   # your suite; see 'Install & use' below
                    but in a context that means the opposite
         mined from: a CI proof-gate that greps its own transcript for a
                    token; the block message contains it, so mentioning it passes
+    • contains / contains
+        mutation : spurious_cue_token_insert. The grepped keyword carried by
+                   text that does none of the work the task asks for
+        mined from: Niven & Kao (ACL 2019): ARCT's accuracy metric scored a
+                   cue-matcher within 3 points of untrained humans
   COVERAGE GAPS: no check guards this shape (a missing grader, not a broken one)
-    • valid_json / valid_json
-        mutation : json_value_type_flip. A required field's value coerced to
-                   the wrong type (number -> string)
     • valid_json / valid_json
         mutation : json_value_corruption. A required field's value changed to a
                    different value of the same type (3 -> 4)
+    • valid_json / valid_json
+        mutation : json_value_type_flip. A required field's value coerced to
+                   the wrong type (number -> string)
         mined from: gradecore valid_json checks key PRESENCE only, never value
 ```
 
-That run is `evalmut` pointed at **its own dependency's** graders. It found three real
-holes and, this is the point, it was **fair about them**: it called the `contains`
-weakness a *blind spot* (a present check that's broken) and the two `valid_json` scopings
-*coverage gaps* (a missing check, not a broken one), because `valid_json` only ever
+That run is `evalmut` pointed at **its own dependency's** graders, gradecore's. It found
+4 real holes (2 blind, 2 coverage-gap) and, this is the point, it was **fair about
+them**: it called the two `contains` weaknesses *blind spots* (a present check that's
+broken) and the two `valid_json` scopings *coverage gaps* (a missing check, not a
+broken one), because `valid_json` only ever
 claimed to check key presence. A tool that cries "broken!" at a correctly-scoped check
 is a tool you learn to ignore.
 
